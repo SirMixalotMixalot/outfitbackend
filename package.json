@@ -1,0 +1,22 @@
+{
+  "name": "outfitbackend",
+  "version": "1.0.0",
+  "description": "Backend of the Outfit app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SirMixalotMixalot/outfitbackend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SirMixalotMixalot/outfitbackend/issues"
+  },
+  "homepage": "https://github.com/SirMixalotMixalot/outfitbackend#readme",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
