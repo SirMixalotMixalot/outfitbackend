@@ -46,7 +46,7 @@ app.post("/users", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ email, password: hashedPassword });
     await user.save();
-    res.status(201).send("added-user");
+    res.status(201).send("success");
   } catch (err) {
     console.error(err.message);
 
@@ -77,7 +77,7 @@ app.post("/uploadItem", async (req, res) => {
   const { image, email } = req.body;
 
   if (!image) {
-    return res.status(400).send("no-image-received");
+    return res.status(400).send("no-image-provided");
   }
   if (!email) {
     return res.status(400).send("email-not-provided");
@@ -91,13 +91,20 @@ app.post("/uploadItem", async (req, res) => {
     return res.status(400).send("user-not-found");
   }
   //use a regex to remove the 'data:image/jpeg;base64,' prefix from the base64 string
-  const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-  const decodedImage = Buffer.from(base64Data, "base64");
 
-  let closetItem = new ClosetItem({ image: decodedImage, owner_id: userId });
-  await closetItem.save();
+  try {
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const decodedImage = Buffer.from(base64Data, "base64");
+    let closetItem = new ClosetItem({ image: decodedImage, owner_id: userId });
+    await closetItem.save();
 
-  res.status(200).send("success");
+    res.status(200).send("success");
+  } catch (err) {
+    console.error(err);
+    if (err === TypeError) {
+      return res.status(500).send("image-not-base64");
+    }
+  }
 });
 
 app.listen(8080);
