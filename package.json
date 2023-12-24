@@ -2,10 +2,11 @@
   "name": "outfitbackend",
   "version": "1.0.0",
   "description": "Backend of the Outfit app",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "devStart": "nodemon server.js"
+    "devStart": "nodemon server.js",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",

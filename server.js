@@ -73,7 +73,11 @@ app.post("/users/login", async (req, res) => {
     res.status(500).send();
   }
 });
-//currently anyone can upload an item...
+/*
+
+    Clothing section
+
+*/
 app.post("/uploadItem", async (req, res) => {
   const { image, email } = req.body;
 
@@ -100,8 +104,14 @@ app.post("/uploadItem", async (req, res) => {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     const decodedImage = Buffer.from(base64Data, "base64");
     //get image details
+    //filler item for now
 
-    let closetItem = new ClosetItem({ image: decodedImage, owner_id: userId });
+    let closetItem = new ClosetItem({
+      image: decodedImage,
+      owner_id: userId,
+      category: "Outerwear",
+      subcategory: "coat",
+    });
     await closetItem.save();
 
     res.status(200).send("success");
@@ -110,6 +120,7 @@ app.post("/uploadItem", async (req, res) => {
     if (err === TypeError) {
       return res.status(500).send("image-not-base64");
     }
+    return res.status(500).send("error");
   }
 });
 

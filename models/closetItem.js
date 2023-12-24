@@ -29,18 +29,19 @@ const closetItemSchema = new mongoose.Schema({
     required: [true, "Please add a season for the item"],
   },
   size: { type: String },
+  last_worn: { type: Date },
 });
 closetItemSchema.path("subcategory").validate(function (value) {
-  switch (category) {
+  switch (this.category) {
     case "Tops":
       return [
-        "t-shirts",
-        "blouses",
-        "shirts",
-        "tank tops",
-        "sweatshirts",
-        "hoodies",
-        "sweaters",
+        "t-shirt",
+        "blouse",
+        "shirt",
+        "tank top",
+        "sweatshirt",
+        "hoodie",
+        "sweater",
       ].includes(value.toLowerCase());
 
     case "Bottoms":
@@ -49,49 +50,39 @@ closetItemSchema.path("subcategory").validate(function (value) {
         "trousers",
         "leggings",
         "shorts",
-        "skirts",
+        "skirt",
         "sweatpants",
       ].includes(value.toLowerCase());
 
     case "Dresses":
       return [
-        "casual dresses",
-        "formal dresses",
-        "maxi dresses",
-        "midi dresses",
-        "mini dresses",
-        "evening gowns",
+        "casual",
+        "formal",
+        "maxi",
+        "midi",
+        "mini",
+        "evening gown",
       ].includes(value.toLowerCase());
 
     case "Outerwear":
-      return [
-        "coats",
-        "jackets",
-        "blazers",
-        "vests",
-        "parkas",
-        "ponchos",
-      ].includes(value.toLowerCase());
+      return ["coat", "jacket", "blazer", "vest", "parka", "poncho"].includes(
+        value.toLowerCase()
+      );
 
     case "Activewear":
       return [
-        "sports bras",
-        "athletic tanks",
-        "workout leggings",
-        "athletic shorts",
-        "track suits",
-        "performance tops",
+        "sports bra",
+        "athletic tank",
+        "workout legging",
+        "athletic short",
+        "track suit",
+        "performance top",
       ].includes(value.toLowerCase());
 
     case "Accessories":
-      return [
-        "scarves",
-        "hats",
-        "gloves",
-        "belts",
-        "sunglasses",
-        "ties",
-      ].includes(value.toLowerCase());
+      return ["scarf", "hat", "glove", "belt", "sunglasses", "tie"].includes(
+        value.toLowerCase()
+      );
 
     case "Footwear":
       return [
