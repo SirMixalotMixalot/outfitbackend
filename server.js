@@ -1,4 +1,4 @@
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 const express = require("express");
 const fs = require("fs");
@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const User = require("./models/auth_user");
 const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
-
+const { authenticateConnection } = require("./middleware/authMiddleWare");
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
 
@@ -27,6 +27,7 @@ const app = express();
 
 //Parse the body as json everytime we receive a request
 app.use(bodyParser.json());
+app.use(authenticateConnection);
 
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
@@ -82,19 +83,24 @@ app.post("/uploadItem", async (req, res) => {
   if (!email) {
     return res.status(400).send("email-not-provided");
   }
+  if (!isEmail(email)) {
+    return res.status(400).send("invalid-email");
+  }
   const userId = await User.findOne()
     .where("email")
     .equals(email)
     .select("_id")
     .exec();
   if (userId == null) {
-    return res.status(400).send("user-not-found");
+    return res.status(404).send("user-not-found");
   }
   //use a regex to remove the 'data:image/jpeg;base64,' prefix from the base64 string
 
   try {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     const decodedImage = Buffer.from(base64Data, "base64");
+    //get image details
+
     let closetItem = new ClosetItem({ image: decodedImage, owner_id: userId });
     await closetItem.save();
 
