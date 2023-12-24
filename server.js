@@ -124,4 +124,6 @@ app.post("/uploadItem", async (req, res) => {
   }
 });
 
-app.listen(8080);
+app.listen(PORT, () => {
+  console.log("server running!");
+});
