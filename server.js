@@ -8,6 +8,7 @@ const User = require("./models/auth_user");
 const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
+const GoogleUser = require("./models/google_user");
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
 
@@ -54,6 +55,13 @@ app.post("/users", async (req, res) => {
     res.status(500).send();
   }
 });
+app.post("/users/google", async (req, res) => {
+  const { email, google_id } = req.body;
+  const googleUser = await GoogleUser({ email, google_id });
+
+  await googleUser.save();
+  res.status(200).send("success");
+});
 
 app.post("/users/login", async (req, res) => {
   const { email, password } = req.body;
@@ -72,6 +80,19 @@ app.post("/users/login", async (req, res) => {
     console.error(err.message);
     res.status(500).send();
   }
+});
+app.post("/users/login/google", async (req, res) => {
+  const { email, id } = req.body;
+
+  const google_user = await GoogleUser.findOne()
+    .where("email")
+    .equals(email)
+    .exec();
+
+  if (google_user == null) {
+    return res.status(400).send("user-not-found");
+  }
+  return res.status(200).send("success");
 });
 /*
 
