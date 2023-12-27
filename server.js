@@ -10,6 +10,7 @@ const ClosetItem = require("./models/closetItem");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
 const GoogleUser = require("./models/google_user");
 const cors = require("cors");
+const ratelimit = require("express-rate-limit");
 
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
@@ -27,6 +28,12 @@ async function main() {
   await mongoose.connect(mongoDB);
 }
 const app = express();
+const limiter = ratelimit.rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 50,
+  message: "Too many requests",
+});
+app.use(limiter);
 app.use(cors());
 //Parse the body as json everytime we receive a request
 app.use(bodyParser.json());
