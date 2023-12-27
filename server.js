@@ -27,11 +27,10 @@ async function main() {
   await mongoose.connect(mongoDB);
 }
 const app = express();
-
+app.use(cors());
 //Parse the body as json everytime we receive a request
 app.use(bodyParser.json());
 app.use(authenticateConnection);
-app.use(cors());
 
 app.options("*", cors());
 app.get("/", (req, res) => {
