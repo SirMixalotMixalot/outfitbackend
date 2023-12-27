@@ -37,7 +37,7 @@ app.use(limiter);
 app.use(cors());
 //Parse the body as json everytime we receive a request
 app.use(bodyParser.json());
-app.use(authenticateConnection);
+//app.use(authenticateConnection);
 
 app.options("*", cors());
 app.get("/", (req, res) => {
