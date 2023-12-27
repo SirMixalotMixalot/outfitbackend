@@ -9,6 +9,8 @@ const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
 const GoogleUser = require("./models/google_user");
+const cors = require("cors");
+
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
 
@@ -29,6 +31,7 @@ const app = express();
 //Parse the body as json everytime we receive a request
 app.use(bodyParser.json());
 app.use(authenticateConnection);
+app.use(cors());
 
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
