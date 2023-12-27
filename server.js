@@ -33,6 +33,7 @@ app.use(bodyParser.json());
 app.use(authenticateConnection);
 app.use(cors());
 
+app.options("*", cors());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
 });
