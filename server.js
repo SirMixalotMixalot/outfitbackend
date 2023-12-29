@@ -7,10 +7,15 @@ const bcrypt = require("bcrypt");
 const User = require("./models/auth_user");
 const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
-const { authenticateConnection } = require("./middleware/authMiddleWare");
+//const { authenticateConnection } = require("./middleware/authMiddleWare");
 const GoogleUser = require("./models/google_user");
 const cors = require("cors");
 const ratelimit = require("express-rate-limit");
+require("dotenv").config();
+const multer = require("multer");
+
+const jwt = require("jsonwebtoken");
+const upload = multer();
 
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
@@ -36,41 +41,67 @@ const limiter = ratelimit.rateLimit({
 app.use(limiter);
 app.use(cors());
 //Parse the body as json everytime we receive a request
-app.use(bodyParser.json());
+app.use(
+  bodyParser.json({
+    limit: "50mb",
+  })
+);
+
 //app.use(authenticateConnection);
 
 app.options("*", cors());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
 });
-//TODO: Remove this!!
-//request for testing purposes
-app.get("/users", async (req, res) => {
-  //authenticate the person hitting us up
-  res.send(await User.find({}).exec());
+app.get("/closet", async (req, res) => {
+  const { email, id: googleId } = req.body;
+  if (!email && !googleId) {
+    return res.status(400).send("no-identity");
+  }
+  let field = "email";
+  let value = email;
+  if (googleId) {
+    field = "googleId";
+    value = googleId;
+  }
+  const userId = await User.findOne()
+    .where(field)
+    .equals(value)
+    .select("_id")
+    .exec();
+  const closetItems = await ClosetItem.find()
+    .where("owner_id")
+    .equals(userId)
+    .exec();
 });
 app.post("/users", async (req, res) => {
-  const { email, password } = req.body;
-  if (!isEmail(email)) {
+  const { googleId, email, password, username } = req.body;
+  if (!isEmail(email) && !googleId) {
     return res.status(400).send("invalid-email");
+  }
+  if (googleId) {
+    const user = new User({ username, googleId });
+    const token = jwt.sign(
+      {
+        username,
+        googleId,
+      },
+      process.env.JWT_SECRET
+    );
+    await user.save();
+    return res.status(200).send({ user: token });
   }
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ email, password: hashedPassword });
+
     await user.save();
-    res.status(201).send("success");
+    return res.status(200).send("success");
   } catch (err) {
     console.error(err.message);
 
     res.status(500).send();
   }
-});
-app.post("/users/google", async (req, res) => {
-  const { email, google_id } = req.body;
-  const googleUser = await GoogleUser({ email, google_id });
-
-  await googleUser.save();
-  res.status(200).send("success");
 });
 
 app.post("/users/login", async (req, res) => {
@@ -82,7 +113,14 @@ app.post("/users/login", async (req, res) => {
   }
   try {
     if (await bcrypt.compare(password, user.password)) {
-      return res.status(200).send("success");
+      const token = jwt.sign(
+        {
+          email: email,
+          password: password,
+        },
+        process.env.JWT_SECRET
+      );
+      return res.status(200).send({ messge: "success", user: token });
     } else {
       return res.status(400).send("not-authorized");
     }
@@ -92,38 +130,45 @@ app.post("/users/login", async (req, res) => {
   }
 });
 app.post("/users/login/google", async (req, res) => {
-  const { email, id } = req.body;
+  const { googleId } = req.body;
 
-  const google_user = await GoogleUser.findOne()
-    .where("email")
-    .equals(email)
+  const google_user = await User.findOne()
+    .where("googleId")
+    .equals(googleId)
     .exec();
 
   if (google_user == null) {
     return res.status(400).send("user-not-found");
   }
-  return res.status(200).send("success");
+  const token = jwt.sign(
+    {
+      googleId: google_user.googleId,
+    },
+    process.env.JWT_SECRET
+  );
+  return res.status(200).send({ messge: "success", user: token });
 });
 /*
 
     Clothing section
 
 */
-app.post("/uploadItem", async (req, res) => {
-  const { image, email } = req.body;
+app.post("/uploadItem", upload.single("image"), async (req, res) => {
+  console.log(req.body);
+  const { email, googleId, details } = req.body;
 
-  if (!image) {
-    return res.status(400).send("no-image-provided");
+  if (!email && !googleId) {
+    return res.status(400).send("id-not-provided");
   }
-  if (!email) {
-    return res.status(400).send("email-not-provided");
-  }
-  if (!isEmail(email)) {
-    return res.status(400).send("invalid-email");
+  let field = "email";
+  let value = email;
+  if (googleId) {
+    field = "googleId";
+    value = googleId;
   }
   const userId = await User.findOne()
-    .where("email")
-    .equals(email)
+    .where(field)
+    .equals(value)
     .select("_id")
     .exec();
   if (userId == null) {
@@ -132,16 +177,15 @@ app.post("/uploadItem", async (req, res) => {
   //use a regex to remove the 'data:image/jpeg;base64,' prefix from the base64 string
 
   try {
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-    const decodedImage = Buffer.from(base64Data, "base64");
+    const image = req.file.buffer;
     //get image details
     //filler item for now
 
     let closetItem = new ClosetItem({
-      image: decodedImage,
+      image: image,
       owner_id: userId,
-      category: "Outerwear",
-      subcategory: "coat",
+      category: details.category,
+      subcategory: details.subcategory,
     });
     await closetItem.save();
 
