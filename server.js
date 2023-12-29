@@ -71,7 +71,7 @@ app.get("/closet", async (req, res) => {
 });
 
 app.post("/users", async (req, res) => {
-  const { googleId, email, password, username, googleCred } = req.body;
+  let { googleId, email, password, username, googleCred } = req.body;
   console.log(req.body);
   if (!isEmail(email) && !googleId) {
     return res.status(400).send("invalid-email");
