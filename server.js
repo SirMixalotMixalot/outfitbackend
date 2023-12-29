@@ -69,17 +69,23 @@ app.get("/closet", async (req, res) => {
     .equals(userId)
     .exec();
 });
-app.post("/users", async (req, res) => {
-  const { googleId, email, password, username } = req.body;
 
+app.post("/users", async (req, res) => {
+  const { googleId, email, password, username, googleCred } = req.body;
+  console.log(req.body);
   if (!isEmail(email) && !googleId) {
     return res.status(400).send("invalid-email");
   }
-  //check if email already exists
-  await User;
+
   if (googleId) {
-    console.log(process.env.JWT_SECRET);
-    const user = new User({ username, googleId });
+    const decodedToken = jwt.decode(googleCred);
+    username = decodedToken.name;
+    const user = new User({
+      username,
+      googleId,
+      email: decodedToken.email,
+    });
+
     const token = jwt.sign(
       {
         username,
