@@ -71,9 +71,12 @@ app.get("/closet", async (req, res) => {
 });
 app.post("/users", async (req, res) => {
   const { googleId, email, password, username } = req.body;
+
   if (!isEmail(email) && !googleId) {
     return res.status(400).send("invalid-email");
   }
+  //check if email already exists
+  await User;
   if (googleId) {
     console.log(process.env.JWT_SECRET);
     const user = new User({ username, googleId });
@@ -105,7 +108,7 @@ app.post("/users", async (req, res) => {
   } catch (err) {
     console.error(err.message);
 
-    res.status(500).send();
+    res.status(500).send({ message: err.message });
   }
 });
 
