@@ -153,7 +153,7 @@ app.post("/users/login/google", async (req, res) => {
     Clothing section
 
 */
-app.post("/uploadItem", upload.single("image"), async (req, res) => {
+app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   console.log(req.body);
   const { email, googleId, details } = req.body;
 
