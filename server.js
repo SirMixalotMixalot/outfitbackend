@@ -99,6 +99,7 @@ app.post("/users", async (req, res) => {
       },
       process.env.JWT_SECRET
     );
+    console.log(token);
     await user.save();
     return res.status(200).send({ user: token });
   } catch (err) {
