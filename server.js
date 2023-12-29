@@ -98,7 +98,7 @@ app.post("/users", async (req, res) => {
   }
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+    const user = new User({ email, password: hashedPassword, username });
 
     const token = jwt.sign(
       {
