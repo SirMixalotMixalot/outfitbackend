@@ -54,7 +54,7 @@ app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
 });
 app.get("/closet", async (req, res) => {
-  const { email, id: googleId } = req.body;
+  const { email, googleId } = req.body;
   if (!email && !googleId) {
     return res.status(400).send("no-identity");
   }
@@ -154,8 +154,18 @@ app.post("/users/login/google", async (req, res) => {
 
 */
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
-  console.log(req.body);
-  const { email, googleId, details } = req.body;
+  const token = req.headers["x-access-token"];
+  let email = null;
+  let googleId = null;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    email = decoded.email;
+    googleId = decoded.googleId;
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ error: "invalid token" });
+  }
+  const { details } = req.body;
 
   if (!email && !googleId) {
     return res.status(400).send("id-not-provided");
