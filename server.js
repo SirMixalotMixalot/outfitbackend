@@ -169,17 +169,21 @@ app.post("/users/login/google", async (req, res) => {
 */
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   const token = req.headers["x-access-token"];
+  console.log(token);
   let email = null;
   let googleId = null;
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(decoded);
     email = decoded.email;
     googleId = decoded.googleId;
   } catch (e) {
     console.error(e);
     res.status(400).json({ error: "invalid token" });
   }
-  const { details } = req.body;
+  let { details } = req.body;
+  console.log(details);
+  details = JSON.parse(details);
 
   if (!email && !googleId) {
     return res.status(400).send("id-not-provided");
@@ -208,17 +212,16 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
     let closetItem = new ClosetItem({
       image: image,
       owner_id: userId,
-      category: details.category,
-      subcategory: details.subcategory,
+      category: details["category"],
+      subcategory: details["subcategory"],
+      color: details["color"],
     });
     await closetItem.save();
 
     res.status(200).send("success");
   } catch (err) {
     console.error(err);
-    if (err === TypeError) {
-      return res.status(500).send("image-not-base64");
-    }
+
     return res.status(500).send("error");
   }
 });
