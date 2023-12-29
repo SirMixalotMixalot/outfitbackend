@@ -95,8 +95,16 @@ app.post("/users", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ email, password: hashedPassword });
 
+    const token = jwt.sign(
+      {
+        username,
+        email,
+        hashedPassword,
+      },
+      process.env.JWT_SECRET
+    );
     await user.save();
-    return res.status(200).send("success");
+    return res.status(200).send({ user: token });
   } catch (err) {
     console.error(err.message);
 
