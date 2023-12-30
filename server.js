@@ -27,6 +27,35 @@ function isEmail(email) {
     email
   );
 }
+
+const cloudinary = require("cloudinary").v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const uploadToCloudinary = async (imageBuffer) => {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream({ resource_type: "image" }, (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        })
+        .end(imageBuffer);
+    });
+    return result.secure_url; // Return the URL from the promise
+  } catch (error) {
+    console.error("Error uploading to Cloudinary:", error);
+    return null;
+  }
+};
+
 main().catch((err) => console.error(err));
 
 async function main() {
@@ -48,26 +77,20 @@ app.options("*", cors());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
 });
-app.get("/closet", async (req, res) => {
-  const { email, googleId } = req.body;
-  if (!email && !googleId) {
-    return res.status(400).send("no-identity");
-  }
-  let field = "email";
-  let value = email;
-  if (googleId) {
-    field = "googleId";
-    value = googleId;
-  }
+app.get("/api/closet", async (req, res) => {
+  const { email } = req.body;
+
   const userId = await User.findOne()
-    .where(field)
-    .equals(value)
+    .where("email")
+    .equals(email)
     .select("_id")
     .exec();
   const closetItems = await ClosetItem.find()
     .where("owner_id")
     .equals(userId)
     .exec();
+
+  return res.status(200).send({ items: closetItems });
 });
 
 app.post("/users", async (req, res) => {
@@ -167,54 +190,35 @@ app.post("/users/login/google", async (req, res) => {
     Clothing section
 
 */
+//Create
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
-  const token = req.headers["x-access-token"];
-  console.log(token);
-  let email = null;
-  let googleId = null;
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(decoded);
-    email = decoded.email;
-    googleId = decoded.googleId;
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ error: "invalid token" });
-  }
+  let email = req.body.email;
   let { details } = req.body;
   console.log(details);
   details = JSON.parse(details);
 
-  if (!email && !googleId) {
-    return res.status(400).send("id-not-provided");
-  }
-  let field = "email";
-  let value = email;
-  if (googleId) {
-    field = "googleId";
-    value = googleId;
-  }
   const userId = await User.findOne()
-    .where(field)
-    .equals(value)
+    .where("email")
+    .equals(email)
     .select("_id")
     .exec();
   if (userId == null) {
     return res.status(404).send("user-not-found");
   }
-  //use a regex to remove the 'data:image/jpeg;base64,' prefix from the base64 string
 
   try {
     const image = req.file.buffer;
-    //get image details
-    //filler item for now
+    //upload image to cloudinary
+    const uploadUrl = await uploadToCloudinary(image);
 
     let closetItem = new ClosetItem({
-      image: image,
+      name: details["name"],
+      image: uploadUrl,
       owner_id: userId,
       category: details["category"],
       subcategory: details["subcategory"],
       color: details["color"],
+      hasGraphic: details["hasGraphic"],
     });
     await closetItem.save();
 
@@ -224,6 +228,84 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
 
     return res.status(500).send("error");
   }
+});
+//Read
+app.get("/api/closetItem", async (req, res) => {
+  const { email, name } = req.body;
+  if (!name || name == "") {
+    return res.status(401).json({ error: "no-image" });
+  }
+  const userId = await User.findOne()
+    .where("email")
+    .equals(email)
+    .select("_id")
+    .exec();
+  if (userId == null) {
+    return res.status(401).json({ error: "invalid-user" });
+  }
+
+  let closetItem = await ClosetItem.findOne()
+    .where("owner_id")
+    .equals(userId)
+    .where("name")
+    .equals(name)
+    .exec();
+  return res.status(200).json({ item: closetItem });
+});
+
+//Update
+app.put("api/updateItemImage", upload.single("image"), async (req, res) => {
+  const { email, name } = req.body;
+  if (!name || name == "") {
+    return res.status(401).json({ error: "no-image" });
+  }
+  const userId = await User.findOne()
+    .where("email")
+    .equals(email)
+    .select("_id")
+    .exec();
+  if (userId == null) {
+    return res.status(401).json({ error: "invalid-user" });
+  }
+
+  let closetItem = await ClosetItem.findOne()
+    .where("owner_id")
+    .equals(userId)
+    .where("name")
+    .equals(name)
+    .exec();
+  const image = req.file;
+  const url = cloudinary.uploader.upload(image.path);
+  closetItem.image = url;
+  await closetItem.save();
+  return res.status(200).json({ message: "success" });
+});
+app.put("/api/updateItemDetails", async (req, res) => {
+  const email = req.body.email;
+  const userId = await User.findOne()
+    .where("email")
+    .equals(email)
+    .select("_id");
+
+  if (userId == null) {
+    return res.status(401).json({ error: "invalid-user" });
+  }
+  const { name } = req.body;
+
+  let closetItem = await ClosetItem.findOne()
+    .where("owner_id")
+    .equals(userId)
+    .where("name")
+    .equals(name)
+    .exec();
+  ["name", "category", "subcategory", "color", "hasGraphic"].forEach(
+    (field) => {
+      if (details[field] && details[field] != "") {
+        closetItem[field] = details[field];
+      }
+    }
+  );
+  closetItem.save();
 });
 
 app.listen(PORT, () => {

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const closetItemSchema = new mongoose.Schema({
   image: { type: Buffer, required: true },
+  name: { type: String, required: true, unique: true },
   owner_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   category: {
     type: String,
@@ -22,7 +23,7 @@ const closetItemSchema = new mongoose.Schema({
   },
   tags: [{ type: String }],
   color: { type: String },
-  is_graphic: { type: Boolean },
+  hasGraphic: { type: Boolean },
   season: {
     type: [String],
     enum: ["Fall", "Winter", "Spring", "Summer", "All"],
