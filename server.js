@@ -7,8 +7,7 @@ const bcrypt = require("bcrypt");
 const User = require("./models/auth_user");
 const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
-//const { authenticateConnection } = require("./middleware/authMiddleWare");
-const GoogleUser = require("./models/google_user");
+const { authenticateConnection } = require("./middleware/authMiddleWare");
 const cors = require("cors");
 
 require("dotenv").config();
@@ -71,26 +70,11 @@ app.use(
   })
 );
 
-//app.use(authenticateConnection);
+app.use(authenticateConnection);
 
 app.options("*", cors());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
-});
-app.get("/api/closet", async (req, res) => {
-  const { email } = req.body;
-
-  const userId = await User.findOne()
-    .where("email")
-    .equals(email)
-    .select("_id")
-    .exec();
-  const closetItems = await ClosetItem.find()
-    .where("owner_id")
-    .equals(userId)
-    .exec();
-
-  return res.status(200).send({ items: closetItems });
 });
 
 app.post("/users", async (req, res) => {
@@ -230,6 +214,21 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   }
 });
 //Read
+app.get("/api/closet", async (req, res) => {
+  const { email } = req.body;
+
+  const userId = await User.findOne()
+    .where("email")
+    .equals(email)
+    .select("_id")
+    .exec();
+  const closetItems = await ClosetItem.find()
+    .where("owner_id")
+    .equals(userId)
+    .exec();
+
+  return res.status(200).send({ items: closetItems });
+});
 app.get("/api/closetItem", async (req, res) => {
   const { email, name } = req.body;
   if (!name || name == "") {
@@ -255,24 +254,10 @@ app.get("/api/closetItem", async (req, res) => {
 
 //Update
 app.put("api/updateItemImage", upload.single("image"), async (req, res) => {
-  const { email, name } = req.body;
-  if (!name || name == "") {
-    return res.status(401).json({ error: "no-image" });
-  }
-  const userId = await User.findOne()
-    .where("email")
-    .equals(email)
-    .select("_id")
-    .exec();
-  if (userId == null) {
-    return res.status(401).json({ error: "invalid-user" });
-  }
-
+  const { itemId } = req.body;
   let closetItem = await ClosetItem.findOne()
-    .where("owner_id")
-    .equals(userId)
-    .where("name")
-    .equals(name)
+    .where("_id")
+    .equals(itemId)
     .exec();
   const image = req.file;
   const url = cloudinary.uploader.upload(image.path);
@@ -281,22 +266,10 @@ app.put("api/updateItemImage", upload.single("image"), async (req, res) => {
   return res.status(200).json({ message: "success" });
 });
 app.put("/api/updateItemDetails", async (req, res) => {
-  const email = req.body.email;
-  const userId = await User.findOne()
-    .where("email")
-    .equals(email)
-    .select("_id");
-
-  if (userId == null) {
-    return res.status(401).json({ error: "invalid-user" });
-  }
-  const { name } = req.body;
-
+  const { itemId } = req.body;
   let closetItem = await ClosetItem.findOne()
-    .where("owner_id")
-    .equals(userId)
-    .where("name")
-    .equals(name)
+    .where("_id")
+    .equals(itemId)
     .exec();
   ["name", "category", "subcategory", "color", "hasGraphic"].forEach(
     (field) => {
@@ -306,6 +279,25 @@ app.put("/api/updateItemDetails", async (req, res) => {
     }
   );
   closetItem.save();
+});
+//Delete
+app.delete("/api/closetItem", async (req, res) => {
+  const { itemId } = req.body;
+
+  if (!itemId) {
+    return res.status(401).json({ error: "invalid-item" });
+  }
+  try {
+    const item = await ClosetItem.findOneAndDelete()
+      .where("_id")
+      .equals(itemId)
+      .exec();
+    console.log(`Deleted ${item}`);
+    return res.status(200).json({ message: "success" });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json({ error: "invalid-item" });
+  }
 });
 
 app.listen(PORT, () => {
