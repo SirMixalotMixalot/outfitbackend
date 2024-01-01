@@ -9,7 +9,11 @@ const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
 const cors = require("cors");
+const { CohereClient } = require("cohere-ai");
 
+const cohere = new CohereClient({
+  token: process.env.COHERE_API_KEY,
+});
 require("dotenv").config();
 const multer = require("multer");
 
@@ -26,7 +30,7 @@ function isEmail(email) {
     email
   );
 }
-
+const WEATHER_URL = " http://api.weatherapi.com/v1";
 const cloudinary = require("cloudinary").v2;
 
 cloudinary.config({
@@ -298,6 +302,61 @@ app.delete("/api/closetItem", async (req, res) => {
     console.error(e);
     return res.status(400).json({ error: "invalid-item" });
   }
+});
+
+//Recommendations
+const prompt = `I am a person with a %s aesthetic. I have white sneakers and black sweatpants.  It is currently 12:56 PM and the weather is cloudy and 1 degree celcius. Can you provide a list, delimited by commas, of items I should wear based on my given outfit in this paragraph I have provided and give a seperate list with the title "recommended" with a list of items you recommend that I should purchase to make my outfit more aesthetic. Do not include any additional text. Where multiple clothing pieces are recommended, split them by a comma.`;
+/**
+ * @param closetItem {ClosetItem}
+ */
+const closetItemToPrompFragment = (closetItem) => {
+  return `${closetItem.color} ${closetItem.subcategory} ${
+    closetItem.hasGraphic ? "with a graphic design" : ""
+  }`;
+};
+app.get("/api/recommendation", async (req, res) => {
+  /**
+   * @typedef {object} RequestBody
+   * @property {string} email
+   * @property {double} longitude
+   * @property {double} latitude
+   * @property {string} user_aesthetic
+   *
+   */
+
+  /** @type {RequestBody} */
+  const { email, latitude, longitude, user_aesthetic } = req.body;
+  const userId = await User.findOne()
+    .where("email")
+    .equals(email)
+    .select("_id")
+    .exec();
+  const closetItems = await ClosetItem.find()
+    .where("owner_id")
+    .equals(userId)
+    .select(["name", "subcategory", "hasGraphic", "color"]);
+  console.log(closetItems);
+
+  const current_weather = await fetch(
+    `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
+  ).then((weather) => weather.json());
+
+  console.log(current_weather.current);
+  const conditions = current_weather.current;
+  const feels_like = conditions.feelslike_c;
+  const weather_summary = conditions.condition.text;
+  console.log(
+    `In the users location, it feels ${feels_like} and overall the weather is ${weather_summary}`
+  );
+  const prompt = `I am a person with a ${
+    user_aesthetic || "normcore"
+  } aesthetic. I have ${closetItems
+    .map(closetItemToPrompFragment)
+    .join(" and ")}. It is ${weather_summary} and feels ${feels_like}°C.
+    Can you provide a list, delimited by commas, of items I should wear based on the clothing items I provided in this paragraph with a title of "suggested:", delimited by commas, and give a seperate list with the title "recommended" with a list of items you recommend that I should purchase to make my outfit more aesthetic. Do not include any additional text. Where multiple clothing pieces are recommended, split them by a comma.`;
+
+  console.log(prompt);
+  return res.status(200).json({ items: closetItems });
 });
 
 app.listen(PORT, () => {
