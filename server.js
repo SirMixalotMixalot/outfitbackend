@@ -104,7 +104,9 @@ app.post("/users", async (req, res) => {
       },
       process.env.JWT_SECRET
     );
-    await user.save();
+    if (!(await User.exists(user))) {
+      await user.save();
+    }
     return res.status(200).send({ user: token });
   }
   try {
