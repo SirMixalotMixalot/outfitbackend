@@ -10,10 +10,8 @@ const ClosetItem = require("./models/closetItem");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
 const cors = require("cors");
 const { CohereClient } = require("cohere-ai");
+const nodemailer = require("nodemailer");
 
-const cohere = new CohereClient({
-  token: process.env.COHERE_API_KEY,
-});
 require("dotenv").config();
 const multer = require("multer");
 
@@ -38,7 +36,9 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
+const cohere = new CohereClient({
+  token: process.env.COHERE_API_KEY,
+});
 const uploadToCloudinary = async (imageBuffer) => {
   try {
     const result = await new Promise((resolve, reject) => {
@@ -175,6 +175,41 @@ app.post("/users/login/google", async (req, res) => {
     process.env.JWT_SECRET
   );
   return res.status(200).send({ messge: "success", user: token });
+});
+app.post("/users/forget-password", async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email }).exec();
+  if (!user) {
+    return res.status(404).send({ error: "invalid-user" });
+  }
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
+  var transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: "societalfits@gmail.com",
+      pass: process.env.GMAIL_PASS,
+    },
+  });
+
+  var mailOptions = {
+    from: "societalfits@gmail.com",
+    to: email,
+    subject: "Reset your password",
+    text: `Click the clink below to reset your password!
+
+           link: ${APP_URL}/reset-password/${user._id}/${token} 
+    `,
+  };
+
+  transporter.sendMail(mailOptions, function (error, info) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
 });
 /*
 
@@ -315,7 +350,7 @@ const prompt = `I am a person with a %s aesthetic. I have white sneakers and bla
 const closetItemToPrompFragment = (closetItem) => {
   return `${closetItem.color} ${closetItem.subcategory} ${
     closetItem.hasGraphic ? "with a graphic design" : ""
-  }`;
+  } and an id of ${closetItem._id}`;
 };
 app.get("/api/recommendation", async (req, res) => {
   /**
@@ -352,14 +387,39 @@ app.get("/api/recommendation", async (req, res) => {
     `In the users location, it feels ${feels_like} and overall the weather is ${weather_summary}`
   );
   const prompt = `I am a person with a ${
-    user_aesthetic || "normcore"
+    user_aesthetic || "normal"
   } aesthetic. I have ${closetItems
     .map(closetItemToPrompFragment)
-    .join(" and ")}. It is ${weather_summary} and feels ${feels_like}°C.
-    Can you provide a list, delimited by commas, of items I should wear based on the clothing items I provided in this paragraph with a title of "suggested:", delimited by commas, and give a seperate list with the title "recommended" with a list of items you recommend that I should purchase to make my outfit more aesthetic. Do not include any additional text. Where multiple clothing pieces are recommended, split them by a comma.`;
+    .join(
+      " and "
+    )}. It is ${weather_summary} and feels ${feels_like}°C. Can you provide a list, delimited by commas, of item ids I should wear based on the clothing items I provided in this paragraph with a title of "suggested:" and give a seperate list with the title "recommended:" with a list of items you recommend that I should purchase to add to my wardrobe. Do not include any additional text.`;
 
   console.log(prompt);
-  return res.status(200).json({ items: closetItems });
+  const prediction = await cohere.generate({
+    prompt,
+  });
+
+  console.log(prediction);
+
+  const suggestions = prediction.generations[0].text;
+  console.log(suggestions);
+  const suggestion_end = suggestions.indexOf("\n");
+  const suggestion_start = suggestions.indexOf(":");
+  const outfit = await Promise.all(
+    suggestions
+      .substring(suggestion_start + 1, suggestion_end)
+      .split(",")
+      .map(async (itemId) => {
+        return await ClosetItem.findById(itemId.trim());
+      })
+  );
+  const recommended_start = suggestions.lastIndexOf(":");
+
+  const recommended = suggestions
+    .substring(recommended_start + 1)
+    .split(",")
+    .map((item) => item.trim());
+  return res.status(200).json({ outfit, recommended });
 });
 
 app.listen(PORT, () => {
