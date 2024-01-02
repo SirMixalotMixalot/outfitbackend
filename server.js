@@ -104,7 +104,8 @@ app.post("/users", async (req, res) => {
       },
       process.env.JWT_SECRET
     );
-    if (!(await User.exists(user))) {
+    if (!(await User.exists({ googleId }))) {
+      console.log(user, " does not exist");
       await user.save();
     }
     return res.status(200).send({ user: token });
