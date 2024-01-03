@@ -9,6 +9,7 @@ const authenticateConnection = (req, res, next) => {
   const token = req.headers["x-access-token"];
   try {
     let decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(decoded);
     req.body["email"] = decoded.email;
     next();
   } catch (e) {
