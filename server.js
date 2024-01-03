@@ -150,7 +150,9 @@ app.post("/users", async (req, res) => {
 });
 
 app.post("/users/login", async (req, res) => {
+  console.log(req.body);
   const { email, password } = req.body;
+
   const user = await User.findOne().where("email").equals(email).exec();
 
   if (user == null) {
@@ -260,7 +262,7 @@ app.post("/users/reset-password", async (req, res) => {
 */
 //Create
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
-  let email = req.body.email;
+  let email = req.body["email"];
   console.log(email);
   let { details } = req.body;
   console.log(details);
