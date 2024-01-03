@@ -19,7 +19,7 @@ const jwt = require("jsonwebtoken");
 const upload = multer();
 
 // TEST (TO CHANGE): Just adding a random App Url for testing.
-const APP_URL = "http://localhost:8080"
+const APP_URL = "http://localhost:5173"
 
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
@@ -197,13 +197,16 @@ app.post("/users/forget-password", async (req, res) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: "societalfits@gmail.com",
-      pass: "Zjd@ho1SY2%bI@rw",
+      type: 'OAuth2',
+      user: 'fitsss.help@gmail.com',
+      clientId: process.env.GMAIL_CLIENT_ID,
+      clientSecret: process.env.GMAIl_CLIENT_SECRET,
+      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
     },
   });
 
   const mailOptions = {
-    from: "societalfits@gmail.com",
+    from: "fitsss.help@gmail.com",
     to: email,
     subject: "Reset your password",
     text: `Click the clink below to reset your password!
@@ -223,7 +226,7 @@ app.post("/users/forget-password", async (req, res) => {
   });
 });
 
-app.post("/users/reset-password", async (req, res) => {
+app.post("/users/reset-password/:id/:token", async (req, res) => {
   const {id, token} = req.params
   const { password } = req.body
 
