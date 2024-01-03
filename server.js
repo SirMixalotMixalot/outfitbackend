@@ -18,6 +18,9 @@ const multer = require("multer");
 const jwt = require("jsonwebtoken");
 const upload = multer();
 
+// TEST (TO CHANGE): Just adding a random App Url for testing.
+const APP_URL = "http://localhost:8080"
+
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
 
@@ -182,18 +185,24 @@ app.post("/users/forget-password", async (req, res) => {
   if (!user) {
     return res.status(404).send({ error: "invalid-user" });
   }
+  // If no password, it is a google user.
+  if (!user.password) {
+    return res.status(404).send({ error: "invalid-user" })
+  }
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "1d",
   });
-  var transporter = nodemailer.createTransport({
+
+  //TODO: Change the mail service from gmail.
+  const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
       user: "societalfits@gmail.com",
-      pass: process.env.GMAIL_PASS,
+      pass: "Zjd@ho1SY2%bI@rw",
     },
   });
 
-  var mailOptions = {
+  const mailOptions = {
     from: "societalfits@gmail.com",
     to: email,
     subject: "Reset your password",
@@ -206,11 +215,30 @@ app.post("/users/forget-password", async (req, res) => {
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
       console.log(error);
+      return res.status(408).send({ error: "service-error" });
     } else {
       console.log("Email sent: " + info.response);
+      return res.status(200).send("success");
     }
   });
 });
+
+app.post("/users/reset-password", async (req, res) => {
+  const {id, token} = req.params
+  const { password } = req.body
+
+  try {
+    let decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    User.findByIdAndUpdate({_id: id}, {password: hashedPassword})
+    .then(u => res.status(200).send("success"))
+    .catch(err => res.status(404).send({ error: "invalid-user" }))
+  } catch (e) {
+    return res.status(401).json({ error: "invalid-token" });
+  }
+
+})
+
 /*
 
     Clothing section
