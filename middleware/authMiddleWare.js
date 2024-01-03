@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const authenticateConnection = (req, res, next) => {
-  if (req.path == "/users" || req.path.includes("/login")) {
+  if (req.path == "/users" 
+  || req.path.includes("/login") 
+  || req.path.includes("/forget-password") 
+  || req.path.includes("/reset-password")) {
     return next();
   }
   const token = req.headers["x-access-token"];
