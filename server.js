@@ -67,16 +67,30 @@ async function main() {
 const app = express();
 
 app.use(cors());
+app.options("/*", function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Content-Length, X-Requested-With, x-access-token"
+  );
+  res.send(200);
+});
 //Parse the body as json everytime we receive a request
 app.use(
   bodyParser.json({
     limit: "50mb",
   })
 );
+// app.options(
+//   "*",
+//   cors({
+//     allowedHeaders: "*",
+//   })
+// );
 
 app.use(authenticateConnection);
 
-app.options("*", cors());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
 });
@@ -85,7 +99,7 @@ app.post("/users", async (req, res) => {
   let { googleId, email, password, username, googleCred } = req.body;
   console.log(req.body);
   if (!isEmail(email) && !googleId) {
-    return res.status(400).send("invalid-email");
+    return res.status(400).send({ message: "invalid-email" });
   }
 
   if (googleId) {
@@ -104,7 +118,7 @@ app.post("/users", async (req, res) => {
       },
       process.env.JWT_SECRET
     );
-    if (!(await User.exists({ googleId }))) {
+    if (!(await User.exists({ email: decodedToken.email }))) {
       console.log(user, " does not exist");
       await user.save();
     }
@@ -137,7 +151,7 @@ app.post("/users/login", async (req, res) => {
   const user = await User.findOne().where("email").equals(email).exec();
 
   if (user == null) {
-    return res.status(400).send("user-not-found");
+    return res.status(400).send({ message: "user-not-found" });
   }
   try {
     if (await bcrypt.compare(password, user.password)) {
@@ -150,11 +164,11 @@ app.post("/users/login", async (req, res) => {
       );
       return res.status(200).send({ messge: "success", user: token });
     } else {
-      return res.status(400).send("not-authorized");
+      return res.status(400).send({ message: "not-authorized" });
     }
   } catch (err) {
     console.error(err.message);
-    res.status(500).send();
+    res.status(500).send({ message: err.message });
   }
 });
 app.post("/users/login/google", async (req, res) => {
@@ -166,7 +180,7 @@ app.post("/users/login/google", async (req, res) => {
     .exec();
 
   if (google_user == null) {
-    return res.status(400).send("user-not-found");
+    return res.status(400).send({ message: "user-not-found" });
   }
   const token = jwt.sign(
     {
@@ -180,7 +194,7 @@ app.post("/users/forget-password", async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email }).exec();
   if (!user) {
-    return res.status(404).send({ error: "invalid-user" });
+    return res.status(404).send({ message: "invalid-user" });
   }
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "1d",
@@ -206,9 +220,11 @@ app.post("/users/forget-password", async (req, res) => {
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
       console.log(error);
+      return res.status(500);
     } else {
       console.log("Email sent: " + info.response);
     }
+    return res.status(200);
   });
 });
 /*
@@ -219,6 +235,7 @@ app.post("/users/forget-password", async (req, res) => {
 //Create
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   let email = req.body.email;
+  console.log(email);
   let { details } = req.body;
   console.log(details);
   details = JSON.parse(details);
@@ -229,7 +246,7 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
     .select("_id")
     .exec();
   if (userId == null) {
-    return res.status(404).send("user-not-found");
+    return res.status(404).send({ message: "user-not-found" });
   }
 
   try {
@@ -248,7 +265,7 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
     });
     await closetItem.save();
 
-    res.status(200).send("success");
+    res.status(200).send({ message: "success" });
   } catch (err) {
     console.error(err);
 
@@ -258,18 +275,22 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
 //Read
 app.get("/api/closet", async (req, res) => {
   const { email } = req.body;
-
-  const userId = await User.findOne()
-    .where("email")
-    .equals(email)
-    .select("_id")
-    .exec();
-  const closetItems = await ClosetItem.find()
-    .where("owner_id")
-    .equals(userId)
-    .exec();
-
-  return res.status(200).send({ items: closetItems });
+  try {
+    const userId = await User.findOne()
+      .where("email")
+      .equals(email)
+      .select("_id")
+      .exec();
+    const closetItems = await ClosetItem.find()
+      .where("owner_id")
+      .equals(userId)
+      .exec();
+    console.log("closet items => ", closetItems);
+    return res.status(200).send({ items: closetItems });
+  } catch (e) {
+    console.log(e);
+    return res.status(500).json({ message: "internal-error" });
+  }
 });
 app.get("/api/closetItem", async (req, res) => {
   const { email, name } = req.body;
