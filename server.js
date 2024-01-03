@@ -262,7 +262,10 @@ app.post("/users/reset-password", async (req, res) => {
 */
 //Create
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
-  let email = req.body["email"];
+  const { email } = jwt.decode(
+    req.headers["x-access-token"],
+    process.env.JWT_SECRET
+  );
   console.log(email);
   let { details } = req.body;
   console.log(details);
