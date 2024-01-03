@@ -19,7 +19,7 @@ const jwt = require("jsonwebtoken");
 const upload = multer();
 
 // TEST (TO CHANGE): Just adding a random App Url for testing.
-const APP_URL = "http://localhost:5173"
+const APP_URL = "http://localhost:5173";
 
 mongoose.set("strictQuery", false);
 const mongoDB = process.env.MONGO_DB_URL;
@@ -110,14 +110,15 @@ app.post("/users", async (req, res) => {
     username = decodedToken.name;
     const user = new User({
       username,
-      googleId,
+      googleId: decodedToken.sub,
       email: decodedToken.email,
     });
 
     const token = jwt.sign(
       {
         username,
-        googleId,
+        email: decodedToken.email,
+        googleId: decodedToken.sub,
       },
       process.env.JWT_SECRET
     );
@@ -177,11 +178,13 @@ app.post("/users/login", async (req, res) => {
   }
 });
 app.post("/users/login/google", async (req, res) => {
-  const { googleId } = req.body;
+  const { googleCred } = req.body;
+
+  const decodedInfo = jwt.decode(googleCred);
 
   const google_user = await User.findOne()
     .where("googleId")
-    .equals(googleId)
+    .equals(decodedInfo.sub)
     .exec();
 
   if (google_user == null) {
@@ -190,6 +193,7 @@ app.post("/users/login/google", async (req, res) => {
   const token = jwt.sign(
     {
       googleId: google_user.googleId,
+      email: google_user.email,
     },
     process.env.JWT_SECRET
   );
@@ -213,8 +217,8 @@ app.post("/users/forget-password", async (req, res) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      type: 'OAuth2',
-      user: 'fitsss.help@gmail.com',
+      type: "OAuth2",
+      user: "fitsss.help@gmail.com",
       clientId: process.env.GMAIL_CLIENT_ID,
       clientSecret: process.env.GMAIl_CLIENT_SECRET,
       refreshToken: process.env.GMAIL_REFRESH_TOKEN,
@@ -244,8 +248,8 @@ app.post("/users/forget-password", async (req, res) => {
 });
 
 app.post("/users/reset-password/:id/:token", async (req, res) => {
-  const {id, token} = req.params
-  const { password } = req.body
+  const { id, token } = req.params;
+  const { password } = req.body;
 
   try {
     let decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -265,20 +269,28 @@ app.post("/users/reset-password/:id/:token", async (req, res) => {
 */
 //Create
 app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
-  const { email } = jwt.decode(
+  const decoded = jwt.decode(
     req.headers["x-access-token"],
     process.env.JWT_SECRET
   );
-  console.log(email);
+  let field = "email";
+  let value = decoded.email;
+  if (!value) {
+    field = "googleId";
+    value = decoded.googleId;
+  }
+
+  console.log(decoded);
   let { details } = req.body;
   console.log(details);
   details = JSON.parse(details);
 
   const userId = await User.findOne()
-    .where("email")
-    .equals(email)
+    .where(field)
+    .equals(value)
     .select("_id")
     .exec();
+  console.log(userId);
   if (userId == null) {
     return res.status(404).send({ message: "user-not-found" });
   }
@@ -291,7 +303,7 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
     let closetItem = new ClosetItem({
       name: details["name"],
       image: uploadUrl,
-      owner_id: userId,
+      owner_id: userId._id,
       category: details["category"],
       subcategory: details["subcategory"],
       color: details["color"],
@@ -317,7 +329,7 @@ app.get("/api/closet", async (req, res) => {
       .exec();
     const closetItems = await ClosetItem.find()
       .where("owner_id")
-      .equals(userId)
+      .equals(userId._id)
       .exec();
     console.log("closet items => ", closetItems);
     return res.status(200).send({ items: closetItems });
