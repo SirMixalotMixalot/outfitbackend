@@ -2,7 +2,9 @@ const mongoose = require("mongoose");
 
 const outfitSchema = new mongoose.Schema({
   name: {
-    type: { String, unique: true, required: true },
+    type: String,
+    required: true,
+    unique: true,
   },
   clothes: {
     type: [mongoose.Schema.Types.ObjectId],
