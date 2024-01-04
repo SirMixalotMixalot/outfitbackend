@@ -173,7 +173,7 @@ app.post("/users/login/google", async (req, res) => {
 
   const decodedInfo = jwt.decode(googleCred);
 
-  const google_user = await User.findOne()
+  let google_user = await User.findOne()
     .where("googleId")
     .equals(decodedInfo.sub)
     .exec();
