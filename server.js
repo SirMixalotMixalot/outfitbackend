@@ -5,6 +5,7 @@ const fs = require("fs");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
 const User = require("./models/auth_user");
+const Outfit = require("./models/outfit");
 const mongoose = require("mongoose");
 const ClosetItem = require("./models/closetItem");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
@@ -487,6 +488,38 @@ app.get("/api/recommendation", async (req, res) => {
     .split(",")
     .map((item) => item.trim());
   return res.status(200).json({ outfit, recommended });
+});
+
+/*
+
+  Outfits
+
+ */
+app.get("/api/outfits", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    console.error("User is null");
+    return res.status(500);
+  }
+  const user = await User.findOne({ email }).exec();
+
+  const outfits = Outfit.find({ owner_id: user._id });
+
+  return res.status(200).json({ outfits });
+});
+//Create
+app.post("/api/outfit", async (req, res) => {
+  const { email, clothes } = req.body;
+  const user = await User.findOne({ email }).exec();
+
+  const outfit = new Outfit({
+    owner_id: user._id,
+    clothes,
+  });
+
+  outfit.save();
+
+  res.status(200).json({ outfit });
 });
 
 app.listen(PORT, () => {
