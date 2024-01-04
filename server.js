@@ -72,30 +72,16 @@ const app = express();
 
 app.use(
   cors({
-    allowedHeaders: ["x-access-token"],
+    allowedHeaders: ["Content-Type", "x-access-token"],
   })
 );
-app.options("*", function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Content-Length, X-Requested-With, x-access-token"
-  );
-  res.send(200);
-});
+
 //Parse the body as json everytime we receive a request
 app.use(
   bodyParser.json({
     limit: "50mb",
   })
 );
-// app.options(
-//   "*",
-//   cors({
-//     allowedHeaders: "*",
-//   })
-// );
 
 app.use(authenticateConnection);
 
