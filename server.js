@@ -473,9 +473,10 @@ app.get("/api/recommendation", async (req, res) => {
       })
   );
   const recommended_start = suggestions.lastIndexOf(":");
+  const recommended_end = suggestions.indexOf("\n", suggestion_end + 1);
 
   const recommended = suggestions
-    .substring(recommended_start + 1)
+    .substring(recommended_start + 1, recommended_end)
     .split(",")
     .map((item) => item.trim());
   return res.status(200).json({ outfit, recommended });
@@ -502,10 +503,11 @@ app.get("/api/outfits", async (req, res) => {
 });
 //Create
 app.post("/api/outfit", async (req, res) => {
-  const { email, clothes, isLiked } = req.body;
+  const { email, clothes, isLiked, outfitName } = req.body;
   const user = await User.findOne({ email }).exec();
 
   const outfit = new Outfit({
+    name: outfitName,
     owner_id: user._id,
     clothes,
     is_liked: isLiked || false,
