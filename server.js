@@ -392,6 +392,7 @@ app.delete("/api/closetItem", async (req, res) => {
       .where("_id")
       .equals(itemId)
       .exec();
+    await cloudinary.uploader.destroy(item.image);
     console.log(`Deleted ${item}`);
     return res.status(200).json({ message: "success" });
   } catch (e) {
