@@ -1,8 +1,11 @@
 const mongoose = require("mongoose");
-const ClosetItem = require("./closetItem");
 
 const outfitSchema = new mongoose.Schema({
-  clothes: { type: [ClosetItem], required: true },
+  clothes: {
+    type: [mongoose.Schema.Types.ObjectId],
+    required: true,
+    ref: "ClosetItem",
+  },
   owner_id: { type: mongoose.Schema.Types.ObjectId, required: true },
 });
 
