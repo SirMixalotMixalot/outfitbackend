@@ -7,6 +7,7 @@ const outfitSchema = new mongoose.Schema({
     ref: "ClosetItem",
   },
   owner_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  is_liked: { type: Boolean },
 });
 
 const Outfit = mongoose.model("Outfit", outfitSchema);

@@ -353,14 +353,14 @@ app.get("/api/closetItem", async (req, res) => {
 });
 
 //Update
-app.put("api/updateItemImage", upload.single("image"), async (req, res) => {
+app.put("/api/updateItemImage", upload.single("image"), async (req, res) => {
   const { itemId } = req.body;
   let closetItem = await ClosetItem.findOne()
     .where("_id")
     .equals(itemId)
     .exec();
   const image = req.file;
-  const url = cloudinary.uploader.upload(image.path);
+  const url = await cloudinary.uploader.upload(image.path);
   closetItem.image = url;
   await closetItem.save();
   return res.status(200).json({ message: "success" });
@@ -493,18 +493,21 @@ app.get("/api/outfits", async (req, res) => {
   }
   const user = await User.findOne({ email }).exec();
 
-  const outfits = Outfit.find({ owner_id: user._id });
+  const outfits = await Outfit.find({ owner_id: user._id })
+    .populate("clothes")
+    .exec();
 
   return res.status(200).json({ outfits });
 });
 //Create
 app.post("/api/outfit", async (req, res) => {
-  const { email, clothes } = req.body;
+  const { email, clothes, isLiked } = req.body;
   const user = await User.findOne({ email }).exec();
 
   const outfit = new Outfit({
     owner_id: user._id,
     clothes,
+    is_liked: isLiked || false,
   });
 
   await outfit.save();
