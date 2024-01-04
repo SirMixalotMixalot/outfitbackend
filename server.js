@@ -179,7 +179,11 @@ app.post("/users/login/google", async (req, res) => {
     .exec();
 
   if (google_user == null) {
-    return res.status(400).send({ message: "user-not-found" });
+    google_user = new User({
+      googleId: decodedInfo.sub,
+      email: decodedInfo.email,
+    });
+    await google_user.save();
   }
   const token = jwt.sign(
     {
