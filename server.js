@@ -393,7 +393,8 @@ app.put("/api/updateItemImage", upload.single("image"), async (req, res) => {
   return res.status(200).json({ message: "success" });
 });
 app.put("/api/updateItemDetails", async (req, res) => {
-  const { itemId } = req.body;
+  const { itemId, details } = req.body;
+  console.log(req);
   let closetItem = await ClosetItem.findOne()
     .where("_id")
     .equals(itemId)
@@ -433,7 +434,7 @@ app.delete("/api/closetItem/:itemId", async (req, res) => {
  * @param closetItem {ClosetItem}
  */
 const closetItemToPrompFragment = (closetItem) => {
-  return `${closetItem.color} ${closetItem.subcategory} ${
+  return `${closetItem.color} ${closetItem.category} ${
     closetItem.hasGraphic ? "with a graphic design" : ""
   } and an id of ${closetItem._id}`;
 };
@@ -457,7 +458,7 @@ app.get("/api/recommendation", async (req, res) => {
   const closetItems = await ClosetItem.find()
     .where("owner_id")
     .equals(userId)
-    .select(["name", "subcategory", "hasGraphic", "color"]);
+    .select(["name", "category", "hasGraphic", "color"]);
 
   const current_weather = await fetch(
     `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
