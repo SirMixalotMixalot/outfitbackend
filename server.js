@@ -88,12 +88,14 @@ app.use(authenticateConnection);
 app.get("/", (req, res) => {
   res.status(200).send({ message: "Hey there ;)" });
 });
-
+/**
+ *
+ */
 app.post("/users", async (req, res) => {
   let { googleId, email, password, username, googleCred } = req.body;
   console.log(req.body);
   if (!isEmail(email) && !googleId) {
-    return res.status(400).send({ message: "invalid-email" });
+    return res.status(400).send({ message: "invalid email" });
   }
 
   if (googleId) {
@@ -113,6 +115,7 @@ app.post("/users", async (req, res) => {
       },
       process.env.JWT_SECRET
     );
+    //if the user does not exist
     if (!(await User.exists({ email: decodedToken.email }))) {
       console.log(user, " does not exist");
       await user.save();
@@ -132,12 +135,21 @@ app.post("/users", async (req, res) => {
       process.env.JWT_SECRET
     );
     console.log(token);
-    await user.save();
+    try {
+      await user.save();
+    } catch (e) {
+      if (e.errors) {
+        const message = e.errors.username || e.errors.email;
+        if (message) {
+          return res.status(400).send({ message });
+        }
+      }
+    }
     return res.status(200).send({ user: token });
   } catch (err) {
     console.error(err.message);
 
-    res.status(500).send({ message: err.message });
+    res.status(500).send({ message: "Oops, server side error" });
   }
 });
 
@@ -148,7 +160,7 @@ app.post("/users/login", async (req, res) => {
   const user = await User.findOne().where("email").equals(email).exec();
 
   if (user == null) {
-    return res.status(400).send({ message: "user-not-found" });
+    return res.status(400).send({ message: "User Not Found" });
   }
   try {
     if (await bcrypt.compare(password, user.password)) {
@@ -159,9 +171,9 @@ app.post("/users/login", async (req, res) => {
         },
         process.env.JWT_SECRET
       );
-      return res.status(200).send({ messge: "success", user: token });
+      return res.status(200).send({ message: "success", user: token });
     } else {
-      return res.status(400).send({ message: "not-authorized" });
+      return res.status(400).send({ message: "Incorrect Password." });
     }
   } catch (err) {
     console.error(err.message);
@@ -181,7 +193,7 @@ app.post("/users/login/google", async (req, res) => {
   if (google_user == null) {
     google_user = await User.findOne({
       email: decodedInfo.email,
-    });
+    }).exec();
     if (google_user == null) {
       google_user = new User({
         email: decodedInfo.email,
@@ -200,17 +212,17 @@ app.post("/users/login/google", async (req, res) => {
     },
     process.env.JWT_SECRET
   );
-  return res.status(200).send({ messge: "success", user: token });
+  return res.status(200).send({ message: "success", user: token });
 });
 app.post("/users/forget-password", async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email }).exec();
   if (!user) {
-    return res.status(404).send({ message: "invalid-user" });
+    return res.status(404).send({ message: "Email Not Registered" });
   }
   // If no password, it is a google user.
   if (!user.password) {
-    return res.status(404).send({ error: "invalid-user" });
+    return res.status(404).send({ message: "Email Is Signed In With Google" });
   }
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "1d",
@@ -241,7 +253,7 @@ app.post("/users/forget-password", async (req, res) => {
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
       console.log(error);
-      return res.status(408).send({ error: "service-error" });
+      return res.status(500).send({ message: "Service Error" });
     } else {
       console.log("Email sent: " + info.response);
       return res.status(200).send("success");
@@ -259,7 +271,7 @@ app.post("/users/reset-password/:id/:token", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     User.findByIdAndUpdate({ _id: id }, { password: hashedPassword })
       .then((u) => res.status(200).send("success"))
-      .catch((err) => res.status(404).send({ error: "invalid-user" }));
+      .catch((err) => res.status(404).send({ error: "User Not Found" }));
   } catch (e) {
     return res.status(401).json({ error: "invalid-token" });
   }
@@ -295,7 +307,9 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
     .exec();
   console.log(userId);
   if (userId == null) {
-    return res.status(404).send({ message: "user-not-found" });
+    return res
+      .status(404)
+      .send({ message: "Not logged in. Please Login again" });
   }
 
   try {
@@ -318,7 +332,7 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   } catch (err) {
     console.error(err);
 
-    return res.status(500).send("error");
+    return res.status(500).send({ message: "Service Error" });
   }
 });
 //Read
@@ -338,13 +352,13 @@ app.get("/api/closet", async (req, res) => {
     return res.status(200).send({ items: closetItems });
   } catch (e) {
     console.log(e);
-    return res.status(500).json({ message: "internal-error" });
+    return res.status(500).json({ message: "Service Error" });
   }
 });
 app.get("/api/closetItem", async (req, res) => {
   const { email, name } = req.body;
   if (!name || name == "") {
-    return res.status(401).json({ error: "no-image" });
+    return res.status(401).json({ error: "No Image Selected" });
   }
   const userId = await User.findOne()
     .where("email")
@@ -352,7 +366,7 @@ app.get("/api/closetItem", async (req, res) => {
     .select("_id")
     .exec();
   if (userId == null) {
-    return res.status(401).json({ error: "invalid-user" });
+    return res.status(401).json({ error: "Not Logged In" });
   }
 
   let closetItem = await ClosetItem.findOne()
@@ -372,6 +386,7 @@ app.put("/api/updateItemImage", upload.single("image"), async (req, res) => {
     .equals(itemId)
     .exec();
   const image = req.file;
+  await cloudinary.uploader.destroy(closetItem.image);
   const url = await cloudinary.uploader.upload(image.path);
   closetItem.image = url;
   await closetItem.save();
@@ -397,7 +412,7 @@ app.delete("/api/closetItem", async (req, res) => {
   const { itemId } = req.body;
 
   if (!itemId) {
-    return res.status(401).json({ error: "invalid-item" });
+    return res.status(401).json({ error: "No Item Selected" });
   }
   try {
     const item = await ClosetItem.findOneAndDelete()
@@ -409,7 +424,7 @@ app.delete("/api/closetItem", async (req, res) => {
     return res.status(200).json({ message: "success" });
   } catch (e) {
     console.error(e);
-    return res.status(400).json({ error: "invalid-item" });
+    return res.status(500).json({ message: "Service Error" });
   }
 });
 
@@ -517,17 +532,20 @@ app.get("/api/outfits", async (req, res) => {
 app.post("/api/outfit", async (req, res) => {
   const { email, clothes, isLiked, outfitName } = req.body;
   const user = await User.findOne({ email }).exec();
+  try {
+    const outfit = new Outfit({
+      name: outfitName,
+      owner_id: user._id,
+      clothes,
+      is_liked: isLiked || false,
+    });
 
-  const outfit = new Outfit({
-    name: outfitName,
-    owner_id: user._id,
-    clothes,
-    is_liked: isLiked || false,
-  });
+    await outfit.save();
 
-  await outfit.save();
-
-  res.status(200).json({ outfit });
+    res.status(200).json({ outfit });
+  } catch (e) {
+    return res.status(400).send({ message: "Outfit name already exists" });
+  }
 });
 
 app.listen(PORT, () => {

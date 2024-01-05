@@ -1,9 +1,11 @@
 const jwt = require("jsonwebtoken");
 const authenticateConnection = (req, res, next) => {
-  if (req.path == "/users" 
-  || req.path.includes("/login") 
-  || req.path.includes("/forget-password") 
-  || req.path.includes("/reset-password")) {
+  if (
+    req.path == "/users" ||
+    req.path.includes("/login") ||
+    req.path.includes("/forget-password") ||
+    req.path.includes("/reset-password")
+  ) {
     return next();
   }
   const token = req.headers["x-access-token"];
@@ -13,7 +15,7 @@ const authenticateConnection = (req, res, next) => {
     req.body["email"] = decoded.email;
     next();
   } catch (e) {
-    return res.status(401).json({ error: "invalid-token" });
+    return res.status(401).json({ error: "Not Signed In" });
   }
 };
 
