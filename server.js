@@ -413,17 +413,28 @@ app.put("/api/updateItemDetails/:itemId", async (req, res) => {
 });
 //Delete
 app.delete("/api/closetItem/:itemId", async (req, res) => {
+  console.log("Delete!");
   const { itemId } = req.params;
 
   if (!itemId) {
     return res.status(401).json({ error: "No Item Selected" });
   }
   try {
-    const item = await ClosetItem.findOneAndDelete()
-      .where("_id")
-      .equals(itemId)
-      .exec();
-    await cloudinary.uploader.destroy(item.image);
+    const item = await ClosetItem.findOne().where("_id").equals(itemId).exec();
+
+    const publicId = item.image.slice(0, item.image.lastIndexOf("."));
+
+    await cloudinary.uploader.destroy(
+      publicId,
+      { resource_type: "image", invalidate: true },
+      (err, res) => {
+        if (err) {
+          console.error(err);
+          throw err;
+        }
+      }
+    );
+    await ClosetItem.deleteOne({ _id: item._id });
     console.log(`Deleted ${item}`);
     return res.status(200).json({ message: "success" });
   } catch (e) {
@@ -545,6 +556,28 @@ app.post("/api/outfit", async (req, res) => {
   } catch (e) {
     return res.status(400).send({ message: "Outfit name already exists" });
   }
+});
+
+//Create Many
+app.post("/api/outfit/batch", async (req, res) => {
+  const { email, outfitsJson, favorite } = req.body;
+  const user = await User.findOne({ email }).exec();
+  //what about if the fit already exists?
+  try {
+    const outfits = JSON.parse(outfitsJson).outfits.map(
+      (fit) =>
+        new Outfit({
+          name: fit.title,
+          owner_id: user._id,
+          clothes: fit.items.map((item) => item._id),
+          favorite: favorite || false,
+        })
+    );
+    await Outfit.insertMany(outfits);
+  } catch (e) {
+    return res.status(400).send({ message: "Non unique generated outfit" });
+  }
+  res.status(200).send({ message: "success" });
 });
 
 app.listen(PORT, () => {
