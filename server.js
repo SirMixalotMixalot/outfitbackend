@@ -467,7 +467,7 @@ app.get("/api/recommendation", async (req, res) => {
   const feels_like = conditions.feelslike_c;
   const weather_summary = conditions.condition.text;
 
-  const prompt = `I am a person with a ${
+  const prompt = `You are fashion advisor. I am a person with a ${
     user_aesthetic || "normal"
   } aesthetic. I have ${closetItems
     .map(closetItemToPrompFragment)
@@ -481,16 +481,19 @@ app.get("/api/recommendation", async (req, res) => {
 
   const suggestions = prediction.generations[0].text;
   console.log(suggestions);
-  const suggestion_end = suggestions.indexOf("\n");
+  let suggestion_end = suggestions.indexOf("\n");
+  if (suggestion_end == -1) {
+    suggestion_end = suggestions.length;
+  }
   const suggestion_start = suggestions.indexOf(":");
-  const outfit = await Promise.all(
-    suggestions
-      .substring(suggestion_start + 1, suggestion_end)
-      .split(",")
-      .map(async (itemId) => {
-        return await ClosetItem.findById(itemId.trim());
-      })
-  );
+  const outfit = suggestions
+    .substring(suggestion_start + 1, suggestion_end)
+    .split(",")
+    .map((itemId) => {
+      console.log(itemId);
+      return closetItems.find((item) => item._id.toString() === itemId.trim());
+    });
+
   const recommended_start = suggestions.lastIndexOf(":");
   const recommended_end = suggestions.indexOf("\n", suggestion_end + 1);
 
