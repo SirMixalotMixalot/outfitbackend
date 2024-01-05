@@ -408,8 +408,8 @@ app.put("/api/updateItemDetails", async (req, res) => {
   closetItem.save();
 });
 //Delete
-app.delete("/api/closetItem", async (req, res) => {
-  const { itemId } = req.body;
+app.delete("/api/closetItem/:itemId", async (req, res) => {
+  const { itemId } = req.params;
 
   if (!itemId) {
     return res.status(401).json({ error: "No Item Selected" });
