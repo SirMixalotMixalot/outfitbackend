@@ -179,11 +179,19 @@ app.post("/users/login/google", async (req, res) => {
     .exec();
 
   if (google_user == null) {
-    google_user = new User({
-      googleId: decodedInfo.sub,
+    google_user = await User.findOne({
       email: decodedInfo.email,
     });
-    await google_user.save();
+    if (google_user == null) {
+      google_user = new User({
+        email: decodedInfo.email,
+        googleId: decodedInfo.sub,
+      });
+      await google_user.save();
+    } else {
+      google_user.googleId = decodedInfo.sub;
+      google_user.save();
+    }
   }
   const token = jwt.sign(
     {
