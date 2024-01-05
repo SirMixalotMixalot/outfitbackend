@@ -394,7 +394,8 @@ app.put("/api/updateItemImage", upload.single("image"), async (req, res) => {
 });
 app.put("/api/updateItemDetails/:itemId", async (req, res) => {
   const { itemId } = req.params;
-  const { details } = req.body;
+  let { details } = req.body;
+  details = JSON.parse(details);
   console.log(req);
   let closetItem = await ClosetItem.findOne()
     .where("_id")
@@ -408,6 +409,7 @@ app.put("/api/updateItemDetails/:itemId", async (req, res) => {
     }
   );
   await closetItem.save();
+  res.status(200).send({ message: "success" });
 });
 //Delete
 app.delete("/api/closetItem/:itemId", async (req, res) => {
