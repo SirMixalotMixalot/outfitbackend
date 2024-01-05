@@ -396,7 +396,7 @@ app.put("/api/updateItemDetails/:itemId", async (req, res) => {
   const { itemId } = req.params;
   let { details } = req.body;
   details = JSON.parse(details);
-  console.log(req);
+
   let closetItem = await ClosetItem.findOne()
     .where("_id")
     .equals(itemId)
