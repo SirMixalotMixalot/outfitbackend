@@ -429,7 +429,6 @@ app.delete("/api/closetItem", async (req, res) => {
 });
 
 //Recommendations
-const prompt = `I am a person with a %s aesthetic. I have white sneakers and black sweatpants.  It is currently 12:56 PM and the weather is cloudy and 1 degree celcius. Can you provide a list, delimited by commas, of items I should wear based on my given outfit in this paragraph I have provided and give a seperate list with the title "recommended" with a list of items you recommend that I should purchase to make my outfit more aesthetic. Do not include any additional text. Where multiple clothing pieces are recommended, split them by a comma.`;
 /**
  * @param closetItem {ClosetItem}
  */
@@ -459,33 +458,26 @@ app.get("/api/recommendation", async (req, res) => {
     .where("owner_id")
     .equals(userId)
     .select(["name", "subcategory", "hasGraphic", "color"]);
-  console.log(closetItems);
 
   const current_weather = await fetch(
     `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
   ).then((weather) => weather.json());
 
-  console.log(current_weather.current);
   const conditions = current_weather.current;
   const feels_like = conditions.feelslike_c;
   const weather_summary = conditions.condition.text;
-  console.log(
-    `In the users location, it feels ${feels_like} and overall the weather is ${weather_summary}`
-  );
+
   const prompt = `I am a person with a ${
     user_aesthetic || "normal"
   } aesthetic. I have ${closetItems
     .map(closetItemToPrompFragment)
     .join(
       " and "
-    )}. It is ${weather_summary} and feels ${feels_like}°C. Can you provide a list, delimited by commas, of item ids I should wear based on the clothing items I provided in this paragraph with a title of "suggested:" and give a seperate list with the title "recommended:" with a list of items you recommend that I should purchase to add to my wardrobe. Do not include any additional text.`;
+    )}. It is ${weather_summary} and feels ${feels_like}°C. Can you provide a list, delimited by commas, of item ids I should wear based on the weather and my aesthetic with a title of "suggested:", make sure the outfit has no duplicate category of clothing unless its category is accessory. Do not include any additional text.`;
 
-  console.log(prompt);
   const prediction = await cohere.generate({
     prompt,
   });
-
-  console.log(prediction);
 
   const suggestions = prediction.generations[0].text;
   console.log(suggestions);
@@ -530,14 +522,14 @@ app.get("/api/outfits", async (req, res) => {
 });
 //Create
 app.post("/api/outfit", async (req, res) => {
-  const { email, clothes, isLiked, outfitName } = req.body;
+  const { email, clothes, favorite, outfitName } = req.body;
   const user = await User.findOne({ email }).exec();
   try {
     const outfit = new Outfit({
       name: outfitName,
       owner_id: user._id,
       clothes,
-      is_liked: isLiked || false,
+      favorite: favorite || false,
     });
 
     await outfit.save();
