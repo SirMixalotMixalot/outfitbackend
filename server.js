@@ -386,7 +386,9 @@ app.put("/api/updateItemImage", upload.single("image"), async (req, res) => {
     .equals(itemId)
     .exec();
   const image = req.file;
-  await cloudinary.uploader.destroy(closetItem.image);
+  const publicId = closetItem.image.slice(0, closetItem.image.lastIndexOf("."));
+
+  await cloudinary.uploader.destroy(publicId);
   const url = await cloudinary.uploader.upload(image.path);
   closetItem.image = url;
   await closetItem.save();
