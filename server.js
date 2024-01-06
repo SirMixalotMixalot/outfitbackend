@@ -526,6 +526,17 @@ app.get("/api/recommendation", async (req, res) => {
   Outfits
 
  */
+//Delete
+app.delete("/api/outfit/:outfitId", async (req, res) => {
+  const { outfitId } = req.params;
+  try {
+    await Outfit.findOneAndDelete({ _id: outfitId });
+    res.status(200).send({ message: "success" });
+  } catch (e) {
+    console.error(e);
+    res.status(400).send({ message: "Invalid Outfit To Delete" });
+  }
+});
 app.get("/api/outfits", async (req, res) => {
   const { email } = req.body;
   if (!email) {
