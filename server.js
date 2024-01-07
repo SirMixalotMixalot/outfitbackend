@@ -505,6 +505,28 @@ app.get("/api/recommendation", async (req, res) => {
     .exec();
   const closetItems = await ClosetItem.find().where("owner_id").equals(userId);
 
+  const tops = ["Tops", "Outerwear"];
+  const bottoms = ["Bottoms", "Activewear"];
+  const footwear = ["Footwear"];
+  const topsEmpty = (counts) => tops.every((t) => counts[t] === 0);
+  const bottomsEmpty = (counts) => bottoms.every((b) => counts[b] === 0);
+  const feetEmpty = (counts) => footwear.every((f) => counts[f] === 0);
+  let itemCounts;
+  closetItems.forEach((item) => {
+    if (!itemCounts[item.category]) {
+      itemCounts[item.category] = 1;
+    } else {
+      itemCounts[item.category]++;
+    }
+  });
+  if (
+    topsEmpty(itemCounts) ||
+    bottomsEmpty(itemCounts) ||
+    feetEmpty(itemCounts)
+  ) {
+    return res.status(400).json({ message: "Not enough clothing items" });
+  }
+
   const current_weather = await fetch(
     `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
   ).then((weather) => weather.json());
