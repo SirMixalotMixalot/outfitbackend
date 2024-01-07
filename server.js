@@ -444,6 +444,34 @@ app.delete("/api/closetItem/:itemId", async (req, res) => {
     return res.status(500).json({ message: "Service Error" });
   }
 });
+function getSeason({ hemisphere }) {
+  const currentDate = new Date();
+  const month = currentDate.getMonth() + 1; // Adding 1 because getMonth() returns zero-based month
+
+  if (hemisphere === "northern") {
+    if (month >= 3 && month <= 5) {
+      return "Spring";
+    } else if (month >= 6 && month <= 8) {
+      return "Summer";
+    } else if (month >= 9 && month <= 11) {
+      return "Autumn";
+    } else {
+      return "Winter";
+    }
+  } else if (hemisphere === "southern") {
+    if (month >= 3 && month <= 5) {
+      return "Autumn";
+    } else if (month >= 6 && month <= 8) {
+      return "Winter";
+    } else if (month >= 9 && month <= 11) {
+      return "Spring";
+    } else {
+      return "Summer";
+    }
+  } else {
+    return "unknown";
+  }
+}
 
 //Recommendations
 /**
@@ -465,16 +493,17 @@ app.get("/api/recommendation", async (req, res) => {
    */
 
   /** @type {RequestBody} */
-  const { email, latitude, longitude, user_aesthetic } = req.body;
+  let { email, latitude, longitude, user_aesthetic, avoid, reason, situation } =
+    req.body;
+  const { lat, long } = req.query;
+  latitude = lat;
+  longitude = long;
   const userId = await User.findOne()
     .where("email")
     .equals(email)
     .select("_id")
     .exec();
-  const closetItems = await ClosetItem.find()
-    .where("owner_id")
-    .equals(userId)
-    .select(["name", "category", "hasGraphic", "color"]);
+  const closetItems = await ClosetItem.find().where("owner_id").equals(userId);
 
   const current_weather = await fetch(
     `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
@@ -483,42 +512,65 @@ app.get("/api/recommendation", async (req, res) => {
   const conditions = current_weather.current;
   const feels_like = conditions.feelslike_c;
   const weather_summary = conditions.condition.text;
-
+  const postprompt = `Generate multiple suggested outfits using the provided list of clothing item IDs. Ensure each outfit consists of one type of footwear, one bottom, and one top, adhering to color theory principles. Include varied combinations of accessories like sunglasses or hats within each outfit if provided in the list of clothing items. If no accessories are included in the provided list, generate outfits without any accessories. Create outfit variations representing a monochromatic ensemble, an outfit with complementary colors, and one with analogous colors. Take into account the temperature range and season for which these outfits are intended. Avoid suggesting multiple types of footwear, bottoms, or tops within a single outfit. Please provide the list of clothing item IDs separated by commas, and specify the temperature range and season for which these outfits are intended. Format the output as a JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of clothing item IDs composing that specific outfit.`;
   const prompt = `You are fashion advisor. I am a person with a ${
     user_aesthetic || "normal"
   } aesthetic. I have ${closetItems
     .map(closetItemToPrompFragment)
     .join(
       " and "
-    )}. It is ${weather_summary} and feels ${feels_like}°C. Can you provide a list, delimited by commas, of item ids I should wear based on the weather and my aesthetic with a title of "suggested:", make sure the outfit has no duplicate category of clothing unless its category is accessory. Do not include any additional text.`;
-
-  const prediction = await cohere.generate({
-    prompt,
+    )}. It is ${weather_summary} and feels ${feels_like}°C. The season is ${getSeason(
+    { hemisphere: latitude < 0 ? "southern" : "northern" }
+  )}. ${situation ? "The occasion is " + situation : ""}`;
+  console.log(prompt);
+  const chatResponse = await cohere.chat({
+    chatHistory: [{ role: "USER", message: prompt }],
+    message: postprompt,
+    // perform web search before answering the question. You can also use your own custom connector.
+    connectors: [{ id: "web-search" }],
   });
-
-  const suggestions = prediction.generations[0].text;
+  console.log(chatResponse.text);
+  const suggestions = chatResponse.text.replace("\\", "");
   console.log(suggestions);
-  let suggestion_end = suggestions.indexOf("\n");
-  if (suggestion_end == -1) {
-    suggestion_end = suggestions.length;
-  }
-  const suggestion_start = suggestions.indexOf(":");
-  const outfit = suggestions
-    .substring(suggestion_start + 1, suggestion_end)
-    .split(",")
-    .map((itemId) => {
-      console.log(itemId);
-      return closetItems.find((item) => item._id.toString() === itemId.trim());
+
+  const jsonStart = suggestions.indexOf("json");
+  const jsonEnd = suggestions.lastIndexOf("```");
+  const jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+  console.log(jsonResponse);
+  try {
+    const outfitsJson = JSON.parse(jsonResponse);
+    console.log(outfitsJson);
+    const outfits = outfitsJson.map(({ clothing_items }) => {
+      console.log(clothing_items);
+      try {
+        return {
+          items: clothing_items
+            .map(
+              (itemId) =>
+                closetItems.find((item) => item._id == itemId) ?? false
+            )
+            .filter((v) => v),
+        };
+      } catch (e) {
+        //probably a list of items seperated by commas
+        return {
+          items: clothing_items
+            .split(",")
+            .map(
+              (itemId) =>
+                closetItems.find((item) => item._id == itemId) ?? false
+            )
+            .filter((v) => v),
+        };
+      }
+      //filter out any values that don't exist (imaginary ids cohere is making up)
     });
 
-  const recommended_start = suggestions.lastIndexOf(":");
-  const recommended_end = suggestions.indexOf("\n", suggestion_end + 1);
-
-  const recommended = suggestions
-    .substring(recommended_start + 1, recommended_end)
-    .split(",")
-    .map((item) => item.trim());
-  return res.status(200).json({ outfit, recommended });
+    return res.status(200).json({ outfits });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send({ message: "Service Error" });
+  }
 });
 
 /*
