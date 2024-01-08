@@ -299,7 +299,7 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   let { details } = req.body;
   console.log(details);
   details = JSON.parse(details);
-  
+
   const userId = await User.findOne()
     .where(field)
     .equals(value)
@@ -566,21 +566,28 @@ app.get("/api/recommendation", async (req, res) => {
     console.log(outfitsJson);
     const outfits = outfitsJson.map(({ clothing_items }) => {
       console.log(clothing_items);
+      items = [];
+
       try {
-        return {
-          clothes: clothing_items
+        if (Array.isArray(clothing_items)) {
+          items = clothing_items
             .map((itemId) => closetItems.find((item) => item._id == itemId))
-            .filter((item) => item !== undefined),
-        };
-      } catch (e) {
-        //probably a list of items seperated by commas
-        return {
-          clothes: clothing_items
+            .filter((item) => item !== undefined);
+        } else {
+          items = clothing_items
             .split(",")
-            .map((itemId) => closetItems.find((item) => item._id == itemId))
-            .filter((item) => item !== undefined), //filter out any values that don't exist (imaginary ids cohere is making up)
-        };
+            .map((itemId) =>
+              closetItems.find((item) => item._id == itemId.trim())
+            )
+            .filter((item) => item !== undefined);
+        }
+      } catch (e) {
+        // Handle errors here if needed
+        console.error(e);
+        res.status(500).json({ message: "Service error" });
       }
+
+      return { clothes: [...new Set(items)] };
     });
 
     return res.status(200).json({ outfits });
