@@ -298,7 +298,6 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   console.log(decoded);
   let { details } = req.body;
   console.log(details);
-  details = JSON.parse(details);
 
   const userId = await User.findOne()
     .where(field)
@@ -562,25 +561,19 @@ app.get("/api/recommendation", async (req, res) => {
     const outfits = outfitsJson.map(({ clothing_items }) => {
       console.log(clothing_items);
       try {
-        return new Outfit({
+        return {
           clothes: clothing_items
-            .map(
-              (itemId) =>
-                closetItems.find((item) => item._id == itemId) ?? false
-            )
-            .filter((v) => v),
-        });
+            .map((itemId) => closetItems.find((item) => item._id == itemId))
+            .filter((item) => item !== undefined),
+        };
       } catch (e) {
         //probably a list of items seperated by commas
-        return new Outfit({
+        return {
           clothes: clothing_items
             .split(",")
-            .map(
-              (itemId) =>
-                closetItems.find((item) => item._id == itemId) ?? false
-            )
-            .filter((v) => v), //filter out any values that don't exist (imaginary ids cohere is making up)
-        });
+            .map((itemId) => closetItems.find((item) => item._id == itemId))
+            .filter((item) => item !== undefined), //filter out any values that don't exist (imaginary ids cohere is making up)
+        };
       }
     });
 
