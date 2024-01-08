@@ -530,7 +530,12 @@ app.get("/api/recommendation", async (req, res) => {
   const conditions = current_weather.current;
   const feels_like = conditions.feelslike_c;
   const weather_summary = conditions.condition.text;
-  const postprompt = `Generate multiple suggested outfits using the provided list of clothing item IDs. Ensure each outfit consists of one type of footwear, one bottom, and one top, adhering to color theory principles. Include varied combinations of accessories like sunglasses or hats within each outfit if provided in the list of clothing items. If no accessories are included in the provided list, generate outfits without any accessories. Create outfit variations representing a monochromatic ensemble, an outfit with complementary colors, and one with analogous colors. Take into account the temperature range and season for which these outfits are intended. Avoid suggesting multiple types of footwear, bottoms, or tops within a single outfit. Please provide the list of clothing item IDs separated by commas, and specify the temperature range and season for which these outfits are intended. Format the output as a JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of clothing item IDs composing that specific outfit.`;
+  const postprompt = `Generate multiple suggested outfits using the provided list of clothing item IDs. 
+  Ensure each outfit consists of one type of footwear, one bottom, and one top, adhering to color theory principles.
+   Include varied combinations of accessories like sunglasses or hats within each outfit if provided in the list of clothing items. 
+   If no accessories are included in the provided list, generate outfits without any accessories. 
+   Create outfit variations representing a monochromatic ensemble, an outfit with complementary colors, and one with analogous colors. 
+   Take into account the season. Avoid suggesting multiple types of footwear, bottoms, or tops within a single outfit. Please provide the list of clothing item IDs separated by commas, and specify the temperature range and season for which these outfits are intended. Format the output as a JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of clothing item IDs composing that specific outfit.`;
   const prompt = `You are fashion advisor. I am a person with a ${
     user_aesthetic || "normal"
   } aesthetic. I have ${closetItems
