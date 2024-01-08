@@ -513,12 +513,10 @@ app.get("/api/recommendation", async (req, res) => {
   const feetEmpty = (counts) => footwear.every((f) => counts[f] === 0);
   let itemCounts = {};
   closetItems.forEach((item) => {
-    if (!itemCounts[item.category]) {
-      itemCounts[item.category] = 1;
-    } else {
-      itemCounts[item.category]++;
-    }
+    itemCounts[item.category] ??= 0;
+    itemCounts[item.category]++;
   });
+
   if (
     topsEmpty(itemCounts) ||
     bottomsEmpty(itemCounts) ||
@@ -565,29 +563,25 @@ app.get("/api/recommendation", async (req, res) => {
     const outfits = outfitsJson.map(({ clothing_items }) => {
       console.log(clothing_items);
       try {
-        return {
-          items: new Outfit({
-            clothes: clothing_items
-              .map(
-                (itemId) =>
-                  closetItems.find((item) => item._id == itemId) ?? false
-              )
-              .filter((v) => v),
-          }),
-        };
+        return new Outfit({
+          clothes: clothing_items
+            .map(
+              (itemId) =>
+                closetItems.find((item) => item._id == itemId) ?? false
+            )
+            .filter((v) => v),
+        });
       } catch (e) {
         //probably a list of items seperated by commas
-        return {
-          items: new Outfit({
-            clothes: clothing_items
-              .split(",")
-              .map(
-                (itemId) =>
-                  closetItems.find((item) => item._id == itemId) ?? false
-              )
-              .filter((v) => v), //filter out any values that don't exist (imaginary ids cohere is making up)
-          }),
-        };
+        return new Outfit({
+          clothes: clothing_items
+            .split(",")
+            .map(
+              (itemId) =>
+                closetItems.find((item) => item._id == itemId) ?? false
+            )
+            .filter((v) => v), //filter out any values that don't exist (imaginary ids cohere is making up)
+        });
       }
     });
 
