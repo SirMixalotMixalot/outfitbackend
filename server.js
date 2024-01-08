@@ -13,7 +13,7 @@ const { authenticateConnection } = require("./middleware/authMiddleWare");
 const cors = require("cors");
 const { CohereClient } = require("cohere-ai");
 const nodemailer = require("nodemailer");
-const Favorites = require('./models/favorites'); // Adjust the path as needed
+const Favorites = require("./models/favorites"); // Adjust the path as needed
 require("dotenv").config();
 const multer = require("multer");
 
@@ -537,7 +537,9 @@ app.get("/api/recommendation", async (req, res) => {
    Include varied combinations of accessories like sunglasses or hats within each outfit if provided in the list of clothing items. 
    If no accessories are included in the provided list, generate outfits without any accessories. 
    Create outfit variations representing a monochromatic ensemble, an outfit with complementary colors, and one with analogous colors. 
-   Take into account the season. Avoid suggesting multiple types of footwear, bottoms, or tops within a single outfit. Please provide the list of clothing item IDs separated by commas, and specify the temperature range and season for which these outfits are intended. Format the output as a JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of clothing item IDs composing that specific outfit.`;
+   Take into account the season. Avoid suggesting multiple types of footwear, bottoms, or tops within a single outfit.
+    Please provide the list of clothing item IDs separated by commas, and specify the temperature range and season for which these outfits are intended.
+     Format the output as a valid JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of clothing item IDs composing that specific outfit.`;
   const prompt = `You are fashion advisor. I am a person with a ${
     user_aesthetic || "normal"
   } aesthetic. I have ${closetItems
@@ -683,7 +685,7 @@ app.listen(PORT, () => {
 /// Save suggested item to favorites
 app.post("/api/favorites", async (req, res) => {
   const { email, outfitId, title, items, tags } = req.body;
-  
+
   try {
     const user = await User.findOne({ email }).exec();
     if (!user) {
@@ -705,7 +707,6 @@ app.post("/api/favorites", async (req, res) => {
     return res.status(400).send({ message: "Failed to save to favorites" });
   }
 });
-
 
 // Get favorites
 app.get("/api/favorites", async (req, res) => {
@@ -730,4 +731,3 @@ app.delete("/api/favorites/:favoriteId", async (req, res) => {
     res.status(400).send({ message: "Invalid Favorite To Delete" });
   }
 });
-
