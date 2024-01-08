@@ -511,7 +511,7 @@ app.get("/api/recommendation", async (req, res) => {
   const topsEmpty = (counts) => tops.every((t) => counts[t] === 0);
   const bottomsEmpty = (counts) => bottoms.every((b) => counts[b] === 0);
   const feetEmpty = (counts) => footwear.every((f) => counts[f] === 0);
-  let itemCounts;
+  let itemCounts = {};
   closetItems.forEach((item) => {
     if (!itemCounts[item.category]) {
       itemCounts[item.category] = 1;
