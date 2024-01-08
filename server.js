@@ -396,7 +396,6 @@ app.put("/api/updateItemImage", upload.single("image"), async (req, res) => {
 app.put("/api/updateItemDetails/:itemId", async (req, res) => {
   const { itemId } = req.params;
   let { details } = req.body;
-  details = JSON.parse(details);
 
   let closetItem = await ClosetItem.findOne()
     .where("_id")
