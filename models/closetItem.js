@@ -81,7 +81,7 @@ closetItemSchema.path("subcategory").validate(function (value) {
       ].includes(value.toLowerCase());
 
     case "Accessories":
-      return ["scarf", "hat", "glove", "belt", "sunglasses", "tie"].includes(
+      return ["scarf", "hat", "glove", "belt", "sunglasses", "tie", "jewelry"].includes(
         value.toLowerCase()
       );
 
