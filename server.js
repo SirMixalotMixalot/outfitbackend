@@ -567,7 +567,7 @@ app.get("/api/recommendation", async (req, res) => {
   try {
     const outfitsJson = JSON.parse(jsonResponse);
     console.log(outfitsJson);
-    const outfits = outfitsJson.map(({ clothing_items }) => {
+    const outfits = outfitsJson.map(({ clothing_items }, index) => {
       console.log(clothing_items);
       items = [];
 
@@ -590,7 +590,7 @@ app.get("/api/recommendation", async (req, res) => {
         res.status(500).json({ message: "Service error" });
       }
 
-      return { clothes: [...new Set(items)] };
+      return { clothes: [...new Set(items)], id: index };
     });
 
     return res.status(200).json({ outfits });
