@@ -298,7 +298,8 @@ app.post("/api/uploadItem", upload.single("image"), async (req, res) => {
   console.log(decoded);
   let { details } = req.body;
   console.log(details);
-
+  details = JSON.parse(details);
+  
   const userId = await User.findOne()
     .where(field)
     .equals(value)
