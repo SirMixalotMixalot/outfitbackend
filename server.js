@@ -566,26 +566,29 @@ app.get("/api/recommendation", async (req, res) => {
       console.log(clothing_items);
       try {
         return {
-          items: clothing_items
-            .map(
-              (itemId) =>
-                closetItems.find((item) => item._id == itemId) ?? false
-            )
-            .filter((v) => v),
+          items: new Outfit({
+            clothes: clothing_items
+              .map(
+                (itemId) =>
+                  closetItems.find((item) => item._id == itemId) ?? false
+              )
+              .filter((v) => v),
+          }),
         };
       } catch (e) {
         //probably a list of items seperated by commas
         return {
-          items: clothing_items
-            .split(",")
-            .map(
-              (itemId) =>
-                closetItems.find((item) => item._id == itemId) ?? false
-            )
-            .filter((v) => v),
+          items: new Outfit({
+            clothes: clothing_items
+              .split(",")
+              .map(
+                (itemId) =>
+                  closetItems.find((item) => item._id == itemId) ?? false
+              )
+              .filter((v) => v), //filter out any values that don't exist (imaginary ids cohere is making up)
+          }),
         };
       }
-      //filter out any values that don't exist (imaginary ids cohere is making up)
     });
 
     return res.status(200).json({ outfits });
