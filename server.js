@@ -5,7 +5,6 @@ const bodyParser = require("body-parser");
 const { authenticateConnection } = require("./middleware/authMiddleWare");
 const cors = require("cors");
 require("dotenv").config();
-const { hello } = require("./controllers/general");
 const { authRouter } = require("./routes/users");
 const { closetRouter } = require("./routes/closetItem");
 const { outfitRouter } = require("./routes/outfit");
@@ -25,7 +24,6 @@ app.use(bodyParser.json());
 
 app.use(authenticateConnection);
 
-app.get("/", hello);
 //User auth
 app.use("/users", authRouter);
 app.use("/api/closet", closetRouter);
