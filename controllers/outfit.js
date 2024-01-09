@@ -1,6 +1,7 @@
 const { Request, Response } = require("express");
 const { postprompt } = require("../helpers/prompt");
 const { Outfit, ClosetItem, User } = require("../models/models");
+const { WEATHER_URL } = require("../constants");
 
 /**
  *

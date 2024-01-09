@@ -2,7 +2,7 @@ const { Request, Response } = require("express");
 const User = require("../models/auth_user");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-
+const { APP_URL } = require("../constants");
 const { isEmail } = require("../helpers/auth");
 const bcrypt = require("bcrypt");
 /**
@@ -148,9 +148,57 @@ const resetUserPassword = async (req, res) => {
   }
 };
 
+const forgetPassword = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email }).exec();
+  if (!user) {
+    return res.status(404).send({ message: "Email Not Registered" });
+  }
+  // If no password, it is a google user.
+  if (!user.password) {
+    return res.status(404).send({ message: "Email Is Signed In With Google" });
+  }
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
+
+  //TODO: Change the mail service from gmail.
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      type: "OAuth2",
+      user: "fitsss.help@gmail.com",
+      clientId: process.env.GMAIL_CLIENT_ID,
+      clientSecret: process.env.GMAIl_CLIENT_SECRET,
+      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+    },
+  });
+
+  const mailOptions = {
+    from: "fitsss.help@gmail.com",
+    to: email,
+    subject: "Reset your password",
+    text: `Click the clink below to reset your password!
+
+           link: ${APP_URL}/reset-password/${user._id}/${token} 
+    `,
+  };
+
+  transporter.sendMail(mailOptions, function (error, info) {
+    if (error) {
+      console.log(error);
+      return res.status(500).send({ message: "Service Error" });
+    } else {
+      console.log("Email sent: " + info.response);
+      return res.status(200).send("success");
+    }
+  });
+};
+
 module.exports = {
   resetUserPassword,
   googleLogin,
   logUserIn,
   createUser,
+  forgetPassword,
 };
