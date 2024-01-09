@@ -22,7 +22,7 @@ const deleteFavorite = async (req, res) => {
 };
 
 const createFavorite = async (req, res) => {
-  const { email, outfitId, title, items, tags } = req.body;
+  const { email, outfitId, title, clothes, tags } = req.body;
 
   try {
     const user = await User.findOne({ email }).exec();
@@ -32,7 +32,7 @@ const createFavorite = async (req, res) => {
 
     const favorite = new Favorites({
       title,
-      items,
+      items: clothes,
       owner_id: user._id,
       tags,
     });
