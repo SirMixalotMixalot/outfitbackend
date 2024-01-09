@@ -1,5 +1,10 @@
 const { Request, Response } = require("express");
-const { postprompt, closetItemToPrompFragment } = require("../helpers/prompt");
+const {
+  postprompt,
+  closetItemToPrompFragment,
+  cohere,
+} = require("../helpers/prompt");
+const { getSeason } = require("../helpers/weather");
 const { Outfit, ClosetItem, User } = require("../models/models");
 const { WEATHER_URL } = require("../constants");
 
