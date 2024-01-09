@@ -4,6 +4,7 @@ const Outfit = require("../models/outfit");
 const ClosetItem = require("../models/closetItem");
 const jwt = require("jsonwebtoken");
 const { uploadToCloudinary } = require("../helpers/upload");
+const cloudinary = require("cloudinary").v2;
 /**
  *
  * @param {Request} req

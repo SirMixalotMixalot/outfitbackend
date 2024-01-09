@@ -10,9 +10,9 @@ const { authRouter } = require("./routes/users");
 const { closetRouter } = require("./routes/closetItem");
 const { outfitRouter } = require("./routes/outfit");
 const { favoriteRouter } = require("./routes/favorite");
-const { setupMongo } = require("./helpers/db");
+const { configureLibs } = require("./helpers/setup");
 
-setupMongo().catch((e) => console.error(e));
+configureLibs().catch((e) => console.error(e));
 const app = express();
 
 app.use(
@@ -20,7 +20,6 @@ app.use(
     allowedHeaders: ["Content-Type", "x-access-token"],
   })
 );
-
 //Parse the body as json everytime we receive a request
 app.use(bodyParser.json());
 
