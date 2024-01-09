@@ -8,6 +8,15 @@ const { getSeason } = require("../helpers/weather");
 const { Outfit, ClosetItem, User } = require("../models/models");
 const { WEATHER_URL } = require("../constants");
 
+const isValidJson = (jsonStr) => {
+  try {
+    JSON.parse(jsonStr);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 /**
  *
  * @param {Request} req
@@ -73,17 +82,43 @@ const getCohereSuggestions = async (req, res) => {
     )}. It is ${weather_summary} and feels ${feels_like}°C. The season is ${getSeason(
     { hemisphere: latitude < 0 ? "southern" : "northern" }
   )}. ${situation ? "The occasion is " + situation : ""}`;
-  const chatResponse = await cohere.chat({
-    chatHistory: [{ role: "USER", message: prompt }],
+
+  let chatHistory = [{ role: "USER", message: prompt }];
+  let chatResponse = await cohere.chat({
+    chatHistory: chatHistory,
     message: postprompt,
+
     // perform web search before answering the question. You can also use your own custom connector.
     connectors: [{ id: "web-search" }],
   });
-  const suggestions = chatResponse.text.replace("\\", "");
+  chatHistory.push({ role: "USER", message: postprompt });
+  chatHistory.push({ role: "CHATBOT", message: chatResponse.text });
+  let suggestions = chatResponse.text.replace("\\", "");
 
-  const jsonStart = suggestions.indexOf("json");
-  const jsonEnd = suggestions.lastIndexOf("```");
-  const jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+  let jsonStart = suggestions.indexOf("json");
+  let jsonEnd = suggestions.lastIndexOf("```");
+  let jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+  const tries = 10;
+
+  while (!isValidJson(jsonResponse) && tries > 0) {
+    console.log("recommending...");
+    chatResponse = await cohere
+      .chat({
+        chatHistory: chatHistory,
+        message:
+          "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json. Do not include any other text",
+      })
+      .catch((e) => {
+        console.error(e);
+        return res.status(500).json({ message: "Service Error" });
+      });
+    suggestions = chatResponse.text.replace("\\", "");
+    console.log(suggestions);
+    jsonStart = suggestions.indexOf("json");
+    jsonEnd = suggestions.lastIndexOf("```");
+    jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+    tries--;
+  }
   try {
     const outfitsJson = JSON.parse(jsonResponse);
     const outfitsMaybe = outfitsJson.map(({ clothing_items }, index) => {
