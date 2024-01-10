@@ -98,7 +98,7 @@ const getCohereSuggestions = async (req, res) => {
   let jsonStart = suggestions.indexOf("json");
   let jsonEnd = suggestions.lastIndexOf("```");
   let jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
-  const tries = 10;
+  let tries = 10;
 
   while (!isValidJson(jsonResponse) && tries > 0) {
     console.log("recommending...");
