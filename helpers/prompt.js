@@ -25,7 +25,7 @@ If no accessories are included in the provided list, generate outfits without an
 Create outfit variations representing a monochromatic ensemble, an outfit with complementary colors, and one with analogous colors. 
 Take into account the season. Avoid suggesting multiple types of footwear, bottoms, or tops within a single outfit.
 Please provide the list of clothing item IDs separated by commas, and specify the temperature range and season for which these outfits are intended.
-Format the output as a valid JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of clothing item IDs composing that specific outfit.
+Format the output as a valid JSON object containing a list of outfit objects. Each outfit object should contain a key for the outfit type (monochromatic, complementary colors, analogous colors) and an array of strings containing the clothing item IDs composing that specific outfit.
 Do not include comments or any additional text`;
 
 module.exports = {
