@@ -42,6 +42,13 @@ const createUser = async (req, res) => {
     return res.status(200).send({ user: token });
   }
   try {
+
+    //Error Checking:
+    //By this point, not a google user, so should have username, email, and password.
+    //If missing any single one, return an error
+    if (!username || !password || !email){
+      return res.status(404).send({ message: "Invalid Information" })
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ email, password: hashedPassword, username });
 
@@ -74,6 +81,11 @@ const createUser = async (req, res) => {
 const logUserIn = async (req, res) => {
   const { email, password } = req.body;
 
+  //Error checking in case no email or password
+  if (!email || !password){
+    return res.status(404).send({ message: "Invalid Information" })
+  }
+
   const user = await User.findOne().where("email").equals(email).exec();
 
   if (user == null) {
@@ -100,6 +112,11 @@ const logUserIn = async (req, res) => {
 
 const googleLogin = async (req, res) => {
   const { googleCred } = req.body;
+
+  //Error Checking: In case no Google Cred
+  if (!googleCred){
+    return res.status(404).send({ error: "User Not Found" })
+  } 
 
   const decodedInfo = jwt.decode(googleCred);
 
@@ -135,6 +152,12 @@ const googleLogin = async (req, res) => {
 
 const resetUserPassword = async (req, res) => {
   const { id, token } = req.params;
+
+  //Error Checking: In case no id or no token, return not found.
+  if (!id || !token) {
+    return res.status(404).send({ error: "User Not Found" })
+  }
+
   const { password } = req.body;
 
   try {
@@ -150,6 +173,12 @@ const resetUserPassword = async (req, res) => {
 
 const forgetPassword = async (req, res) => {
   const { email } = req.body;
+
+  //Error checking: In case missing an email
+  if (!email){
+    return res.status(404).send({ message: "Non-existent Email" })
+  }
+
   const user = await User.findOne({ email }).exec();
   if (!user) {
     return res.status(404).send({ message: "Email Not Registered" });
