@@ -30,7 +30,6 @@ const createInitialPrompt = async ({
   const current_weather = await fetch(
     `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
   ).then((weather) => weather.json());
-  console.log(current_weather);
   if (!current_weather) {
     throw new Error("Weather API broken");
   }
@@ -61,12 +60,12 @@ const chatToCohereAndGetResponse = async (chatHistory) => {
     connectors: [{ id: "web-search" }],
   });
   chatHistory.push({ role: "USER", message: postprompt });
-  chatHistory.push({ role: "CHATBOT", message: chatResponse.text });
   let suggestions = chatResponse.text.replace("\\", "");
 
   let jsonStart = suggestions.indexOf("json");
   let jsonEnd = suggestions.lastIndexOf("```");
   let jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+  chatHistory.push({ role: "CHATBOT", message: chatResponse.text });
 
   return jsonResponse;
 };
@@ -93,37 +92,38 @@ const createCohereSuggestions = async (suggestionOptions) => {
     .concat([{ role: "USER", message: prompt }]);
 
   let tries = 10;
-  let jsonResponse = `[
-    
-      {
-        "outfit_type": "monochromatic",
-        "clothing_items": [
-          ["65a1ee7c664a51cdeaa16285"],
-          ["65a408d7664a51cdeaa1645e"],
-          ["65a40901664a51cdeaa16467"]
-        ]
-      }
-    ,
-    
-      {
-        "outfit_type": "complementary",
-        "clothing_items": [
-          ["65a40847664a51cdeaa16455", "65a409a2664a51cdeaa164a2"],
-          ["65a408d7664a51cdeaa1645e", "65a7bb76664a51cdeaa164859", "65a1ee7c664a51cdeaa16285"]
-        ]
-      }
-    ,
-    
-      {
-        "outfit_type": "analogous",
-        "clothing_items": [
-          ["65a408d7664a51cdeaa1645e", "65a409a2664a51cdeaa164a2"]
-        ]
-      }
-    
-  ]
-  `;
-  //await chatToCohereAndGetResponse(chatHistory);
+  let jsonResponse =
+    //`[
+
+    //       {
+    //         "outfit_type": "monochromatic",
+    //         "clothing_items": [
+    //           ["65a1ee7c664a51cdeaa16285"],
+    //           ["65a408d7664a51cdeaa1645e"],
+    //           ["65a40901664a51cdeaa16467"]
+    //         ]
+    //       }
+    //     ,
+
+    //       {
+    //         "outfit_type": "complementary",
+    //         "clothing_items": [
+    //           ["65a40847664a51cdeaa16455", "65a409a2664a51cdeaa164a2"],
+    //           ["65a408d7664a51cdeaa1645e", "65a7bb76664a51cdeaa164859", "65a1ee7c664a51cdeaa16285"]
+    //         ]
+    //       }
+    //     ,
+
+    //       {
+    //         "outfit_type": "analogous",
+    //         "clothing_items": [
+    //           ["65a408d7664a51cdeaa1645e", "65a409a2664a51cdeaa164a2"]
+    //         ]
+    //       }
+
+    //   ]
+    //   `;
+    await chatToCohereAndGetResponse(chatHistory);
 
   while (!isValidJson(jsonResponse) && tries > 0) {
     console.log("recommending...");
@@ -131,14 +131,13 @@ const createCohereSuggestions = async (suggestionOptions) => {
     chatHistory.push({
       role: "USER",
       message:
-        "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json. Do not include any other text",
+        "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json with the same ids. Do not include any other text",
     });
 
-    jsonResponse = chatToCohereAndGetResponse(chatHistory);
+    jsonResponse = await chatToCohereAndGetResponse(chatHistory);
 
     tries--;
   }
-  console.log(chatHistory);
   user.chat_history = chatHistory;
   await user.save();
   try {
@@ -150,10 +149,6 @@ const createCohereSuggestions = async (suggestionOptions) => {
       try {
         if (Array.isArray(clothing_items)) {
           items = clothing_items
-            .map((itemId) => closetItems.find((item) => item._id == itemId))
-            .filter((item) => item !== undefined);
-        } else if ("items" in clothing_items) {
-          items = clothing_items.items
             .map((itemId) => closetItems.find((item) => item._id == itemId))
             .filter((item) => item !== undefined);
         } else {
@@ -169,10 +164,11 @@ const createCohereSuggestions = async (suggestionOptions) => {
         console.error(e);
         throw e;
       }
-      //   const clothes = [...new Set(items)];
-      //   if (clothes.length < 3 || clothes.length > 4) {
-      //     return null; //So we filter it
-      //   }
+      console.log(items);
+      const clothes = [...new Set(items)];
+      if (clothes.length < 3 || clothes.length > 4) {
+        return null; //So we filter it
+      }
 
       return {
         clothes: closetItems.slice(-4),
@@ -184,13 +180,14 @@ const createCohereSuggestions = async (suggestionOptions) => {
       new Suggestion({
         owner_id: user._id,
         favorite: false,
-        items: clothes.map((item) => item._id),
+        clothes: clothes,
       }).save()
     );
 
-    const savedSuggestions = await Promise.all(outfitsSuggested);
+    const savedSuggestions = await Promise.all(outfitsSuggested); //saves them
     console.log(savedSuggestions);
-    return outfitsSuggested;
+    const populated = savedSuggestions.map((s) => s.populate()); // populates them
+    return await Promise.all(populated);
   } catch (e) {
     console.error(e);
     throw e;

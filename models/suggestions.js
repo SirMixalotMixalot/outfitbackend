@@ -2,7 +2,7 @@ const { boolean } = require("cohere-ai/core/schemas");
 const mongoose = require("mongoose");
 
 const suggestionsSchema = new mongoose.Schema({
-  items: {
+  outfits: {
     type: [mongoose.Schema.Types.ObjectId],
     required: true,
     ref: "ClosetItem", // Assuming you have a model named "ClosetItem" for individual items
