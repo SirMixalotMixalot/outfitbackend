@@ -24,7 +24,7 @@ npm i
 ```
 Run the server!
 ```bash
-npm run devStart
+npm run dev
 ```
 ## Structure
 This repository follows a standard structure for organizing an Express.js server application. The structure is designed to maintain modularity📦, enhance readability 📖, and facilitate scalability 📈.
