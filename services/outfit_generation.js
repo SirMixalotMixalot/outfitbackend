@@ -92,88 +92,57 @@ const createCohereSuggestions = async (suggestionOptions) => {
     .concat([{ role: "USER", message: prompt }]);
 
   let tries = 10;
-  let jsonResponse = "";
-  //`[
+  let jsonResponse = await chatToCohereAndGetResponse(chatHistory);
 
-  //       {
-  //         "outfit_type": "monochromatic",
-  //         "clothing_items": [
-  //           ["65a1ee7c664a51cdeaa16285"],
-  //           ["65a408d7664a51cdeaa1645e"],
-  //           ["65a40901664a51cdeaa16467"]
-  //         ]
-  //       }
-  //     ,
+  while (!isValidJson(jsonResponse) && tries > 0) {
+    console.log("recommending...");
 
-  //       {
-  //         "outfit_type": "complementary",
-  //         "clothing_items": [
-  //           ["65a40847664a51cdeaa16455", "65a409a2664a51cdeaa164a2"],
-  //           ["65a408d7664a51cdeaa1645e", "65a7bb76664a51cdeaa164859", "65a1ee7c664a51cdeaa16285"]
-  //         ]
-  //       }
-  //     ,
+    chatHistory.push({
+      role: "USER",
+      message:
+        "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json with the same ids in an array called clothing_items. Do not include any other text",
+    });
 
-  //       {
-  //         "outfit_type": "analogous",
-  //         "clothing_items": [
-  //           ["65a408d7664a51cdeaa1645e", "65a409a2664a51cdeaa164a2"]
-  //         ]
-  //       }
+    jsonResponse = await chatToCohereAndGetResponse(chatHistory);
 
-  //   ]
-  //   `;
-  //await chatToCohereAndGetResponse(chatHistory);
+    tries--;
+  }
+  user.chat_history = chatHistory;
+  await user.save();
 
-  //   while (false && !isValidJson(jsonResponse) && tries > 0) {
-  //     console.log("recommending...");
+  const outfitsJson = JSON.parse(jsonResponse);
+  console.log(outfitsJson);
+  const outfitsMaybe = outfitsJson.map(({ clothing_items }, index) => {
+    items = [];
 
-  //     chatHistory.push({
-  //       role: "USER",
-  //       message:
-  //         "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json with the same ids in an array called clothing_items. Do not include any other text",
-  //     });
+    try {
+      if (Array.isArray(clothing_items)) {
+        items = clothing_items
+          .map((itemId) => closetItems.find((item) => item._id == itemId))
+          .filter((item) => item !== undefined);
+      } else {
+        items = clothing_items
+          .split(",")
+          .map((itemId) =>
+            closetItems.find((item) => item._id == itemId.trim())
+          )
+          .filter((item) => item !== undefined);
+      }
+    } catch (e) {
+      // Handle errors here if needed
+      console.error(e);
+      throw e;
+    }
+    console.log(items);
+    const clothes = [...new Set(items)];
+    if (clothes.length < 3 || clothes.length > 4) {
+      return null; //So we filter it
+    }
 
-  //     jsonResponse = await chatToCohereAndGetResponse(chatHistory);
-
-  //     tries--;
-  //   }
-  //   user.chat_history = chatHistory;
-  //   await user.save();
-  //   try {
-  //     const outfitsJson = JSON.parse(jsonResponse);
-  //     console.log(outfitsJson);
-  //     const outfitsMaybe = outfitsJson.map(({ clothing_items }, index) => {
-  //       items = [];
-
-  //       try {
-  //         if (Array.isArray(clothing_items)) {
-  //           items = clothing_items
-  //             .map((itemId) => closetItems.find((item) => item._id == itemId))
-  //             .filter((item) => item !== undefined);
-  //         } else {
-  //           items = clothing_items
-  //             .split(",")
-  //             .map((itemId) =>
-  //               closetItems.find((item) => item._id == itemId.trim())
-  //             )
-  //             .filter((item) => item !== undefined);
-  //         }
-  //       } catch (e) {
-  //         // Handle errors here if needed
-  //         console.error(e);
-  //         throw e;
-  //       }
-  //       console.log(items);
-  //       const clothes = [...new Set(items)];
-  //       if (clothes.length < 3 || clothes.length > 4) {
-  //         return null; //So we filter it
-  //       }
-
-  //       return {
-  //         clothes: closetItems.slice(-4),
-  //       }; /*Best I can do is give it a random id */
-  //     });
+    return {
+      clothes: closetItems.slice(-4),
+    }; /*Best I can do is give it a random id */
+  });
 
   const outfits = [1, 2, 3, 4].map((_) => ({
     clothes: closetItems.slice(-4),
