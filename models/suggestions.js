@@ -14,7 +14,7 @@ const suggestionsSchema = new mongoose.Schema({
   tags: {
     type: [String],
   },
-  favorite: {
+  isFavorite: {
     type: Boolean,
   },
 });

@@ -12,7 +12,7 @@ const outfitSchema = new mongoose.Schema({
     ref: "ClosetItem",
   },
   owner_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  favorite: { type: Boolean },
+  isFavorite: { type: Boolean },
   tages: {
     type: [String],
   },
