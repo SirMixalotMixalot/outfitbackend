@@ -109,9 +109,9 @@ const createOutfit = async (req, res) => {
 const getSavedSuggestions = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email }).exec();
-  const suggestions = await Suggestion.find({ owner_id: user._id }).populate(
-    "clothes"
-  );
+  const suggestions = await Suggestion.find({ owner_id: user._id })
+    .populate("clothes")
+    .exec();
 
   return res.status(200).json({ suggestions });
 };

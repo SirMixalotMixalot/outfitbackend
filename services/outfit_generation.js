@@ -131,7 +131,7 @@ const createCohereSuggestions = async (suggestionOptions) => {
     chatHistory.push({
       role: "USER",
       message:
-        "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json with the same ids. Do not include any other text",
+        "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json with the same ids in an array called clothing_items. Do not include any other text",
     });
 
     jsonResponse = await chatToCohereAndGetResponse(chatHistory);
@@ -180,7 +180,7 @@ const createCohereSuggestions = async (suggestionOptions) => {
       new Suggestion({
         owner_id: user._id,
         favorite: false,
-        clothes: clothes,
+        clothes: clothes.map((item) => item._id),
       }).save()
     );
 
