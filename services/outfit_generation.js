@@ -169,10 +169,10 @@ const createCohereSuggestions = async (suggestionOptions) => {
         console.error(e);
         throw e;
       }
-      const clothes = [...new Set(items)];
-      if (clothes.length < 3 || clothes.length > 4) {
-        return null; //So we filter it
-      }
+      //   const clothes = [...new Set(items)];
+      //   if (clothes.length < 3 || clothes.length > 4) {
+      //     return null; //So we filter it
+      //   }
 
       return {
         clothes: closetItems.slice(-4),
@@ -184,12 +184,12 @@ const createCohereSuggestions = async (suggestionOptions) => {
       new Suggestion({
         owner_id: user._id,
         favorite: false,
-        items: clothes,
+        items: clothes.map((item) => item._id),
       }).save()
     );
 
-    await Promise.all(outfitsSuggested);
-    console.log("Hello");
+    const savedSuggestions = await Promise.all(outfitsSuggested);
+    console.log(savedSuggestions);
     return outfitsSuggested;
   } catch (e) {
     console.error(e);
