@@ -20,20 +20,13 @@ const isValidJson = (jsonStr) => {
     return false;
   }
 };
-
-const createCohereSuggestions = async (suggestionOptions) => {
-  let { email, latitude, longitude, user_aesthetic, avoid, reason, situation } =
-    suggestionOptions;
-
-  const user = await User.findOne().where("email").equals(email).exec();
-  const closetItems = await ClosetItem.find()
-    .where("owner_id")
-    .equals(user._id);
-
-  if (!isValidOutfit(closetItems)) {
-    throw new Error("Not enough clothing items");
-  }
-
+const createInitialPrompt = async ({
+  closetItems,
+  latitude,
+  longitude,
+  user_aesthetic,
+  situation,
+}) => {
   const current_weather = await fetch(
     `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
   ).then((weather) => weather.json());
@@ -57,14 +50,14 @@ const createCohereSuggestions = async (suggestionOptions) => {
     { hemisphere: latitude < 0 ? "southern" : "northern" }
   )}. ${situation ? "The occasion is " + situation : ""}`;
 
-  let chatHistory = user.chat_history
-    .map((obj) => ({ role: obj.role, message: obj.message }))
-    .concat([{ role: "USER", message: prompt }]);
+  return prompt;
+};
+
+const chatToCohereAndGetResponse = async (chatHistory) => {
   let chatResponse = await cohere.chat({
-    chatHistory: chatHistory.slice(-3),
+    chatHistory: chatHistory.slice(-4),
     message: postprompt,
 
-    // perform web search before answering the question. You can also use your own custom connector.
     connectors: [{ id: "web-search" }],
   });
   chatHistory.push({ role: "USER", message: postprompt });
@@ -74,31 +67,75 @@ const createCohereSuggestions = async (suggestionOptions) => {
   let jsonStart = suggestions.indexOf("json");
   let jsonEnd = suggestions.lastIndexOf("```");
   let jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+
+  return jsonResponse;
+};
+const createCohereSuggestions = async (suggestionOptions) => {
+  let { email, latitude, longitude, user_aesthetic, avoid, reason, situation } =
+    suggestionOptions;
+
+  const user = await User.findOne().where("email").equals(email).exec();
+  const closetItems = await ClosetItem.find()
+    .where("owner_id")
+    .equals(user._id);
+
+  if (!isValidOutfit(closetItems)) {
+    throw new Error("Not enough clothing items");
+  }
+  const prompt = await createInitialPrompt({
+    closetItems,
+    latitude,
+    longitude,
+    user_aesthetic,
+  });
+  let chatHistory = user.chat_history
+    .map((obj) => ({ role: obj.role, message: obj.message }))
+    .concat([{ role: "USER", message: prompt }]);
+
   let tries = 10;
+  let jsonResponse = `[
+    
+      {
+        "outfit_type": "monochromatic",
+        "clothing_items": [
+          ["65a1ee7c664a51cdeaa16285"],
+          ["65a408d7664a51cdeaa1645e"],
+          ["65a40901664a51cdeaa16467"]
+        ]
+      }
+    ,
+    
+      {
+        "outfit_type": "complementary",
+        "clothing_items": [
+          ["65a40847664a51cdeaa16455", "65a409a2664a51cdeaa164a2"],
+          ["65a408d7664a51cdeaa1645e", "65a7bb76664a51cdeaa164859", "65a1ee7c664a51cdeaa16285"]
+        ]
+      }
+    ,
+    
+      {
+        "outfit_type": "analogous",
+        "clothing_items": [
+          ["65a408d7664a51cdeaa1645e", "65a409a2664a51cdeaa164a2"]
+        ]
+      }
+    
+  ]
+  `;
+  //await chatToCohereAndGetResponse(chatHistory);
 
   while (!isValidJson(jsonResponse) && tries > 0) {
     console.log("recommending...");
-    chatResponse = await cohere
-      .chat({
-        chatHistory: chatHistory.slice(-3),
-        message:
-          "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json. Do not include any other text",
-      })
-      .catch((e) => {
-        console.error(e);
-        throw e;
-      });
+
     chatHistory.push({
       role: "USER",
       message:
         "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json. Do not include any other text",
     });
-    chatHistory.push({ role: "CHATBOT", message: chatResponse.text });
-    suggestions = chatResponse.text.replace("\n", "").replace("\\", "");
-    console.log(suggestions);
-    jsonStart = suggestions.indexOf("json");
-    jsonEnd = suggestions.lastIndexOf("```");
-    jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
+
+    jsonResponse = chatToCohereAndGetResponse(chatHistory);
+
     tries--;
   }
   console.log(chatHistory);
@@ -106,6 +143,7 @@ const createCohereSuggestions = async (suggestionOptions) => {
   await user.save();
   try {
     const outfitsJson = JSON.parse(jsonResponse);
+    console.log(outfitsJson);
     const outfitsMaybe = outfitsJson.map(({ clothing_items }, index) => {
       items = [];
 
@@ -136,8 +174,11 @@ const createCohereSuggestions = async (suggestionOptions) => {
         return null; //So we filter it
       }
 
-      return { clothes }; /*Best I can do is give it a random id */
+      return {
+        clothes: closetItems.slice(-4),
+      }; /*Best I can do is give it a random id */
     });
+
     const outfits = outfitsMaybe.filter((clothing) => clothing);
     const outfitsSuggested = outfits.map(({ clothes }) =>
       new Suggestion({
@@ -148,8 +189,8 @@ const createCohereSuggestions = async (suggestionOptions) => {
     );
 
     await Promise.all(outfitsSuggested);
-
-    return outfits;
+    console.log("Hello");
+    return outfitsSuggested;
   } catch (e) {
     console.error(e);
     throw e;
