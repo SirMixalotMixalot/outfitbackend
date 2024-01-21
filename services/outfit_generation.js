@@ -8,9 +8,10 @@ const {
   isValidOutfit,
 } = require("../helpers/prompt");
 const { getSeason } = require("../helpers/weather");
-const { ClosetItem, User } = require("../models/models");
+const { ClosetItem, User, Suggestion } = require("../models/models");
 const { WEATHER_URL } = require("../constants");
 const axios = require("axios");
+const { promises } = require("nodemailer/lib/xoauth2");
 const isValidJson = (jsonStr) => {
   try {
     JSON.parse(jsonStr);
@@ -93,7 +94,7 @@ const createCohereSuggestions = async (suggestionOptions) => {
         "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json. Do not include any other text",
     });
     chatHistory.push({ role: "CHATBOT", message: chatResponse.text });
-    suggestions = chatResponse.text.replace("\\", "");
+    suggestions = chatResponse.text.replace("\n", "").replace("\\", "");
     console.log(suggestions);
     jsonStart = suggestions.indexOf("json");
     jsonEnd = suggestions.lastIndexOf("```");
@@ -134,9 +135,19 @@ const createCohereSuggestions = async (suggestionOptions) => {
       if (clothes.length < 3 || clothes.length > 4) {
         return null; //So we filter it
       }
-      return { clothes, id: index }; /*Best I can do is give it a random id */
+
+      return { clothes }; /*Best I can do is give it a random id */
     });
     const outfits = outfitsMaybe.filter((clothing) => clothing);
+    const outfitsSuggested = outfits.map(({ clothes }) =>
+      new Suggestion({
+        owner_id: user._id,
+        favorite: false,
+        items: clothes,
+      }).save()
+    );
+
+    await Promise.all(outfitsSuggested);
 
     return outfits;
   } catch (e) {

@@ -2,10 +2,6 @@ const { boolean } = require("cohere-ai/core/schemas");
 const mongoose = require("mongoose");
 
 const suggestionsSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-  },
   items: {
     type: [mongoose.Schema.Types.ObjectId],
     required: true,
@@ -18,7 +14,7 @@ const suggestionsSchema = new mongoose.Schema({
   tags: {
     type: [String],
   },
-  is_favorite: {
+  favorite: {
     type: Boolean,
   },
 });
