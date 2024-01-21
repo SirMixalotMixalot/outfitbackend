@@ -27,8 +27,7 @@ app.use(authenticateConnection);
 //User auth
 app.use("/users", authRouter);
 app.use("/api/closet", closetRouter);
-app.use("/api/outfit", outfitRouter);
-app.use("/api/favorite", favoriteRouter);
+app.use("/api/favorites", outfitRouter);
 app.listen(PORT, () => {
   console.log("server running!");
 });

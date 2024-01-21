@@ -1,15 +1,19 @@
 const express = require("express");
 const {
-  getCohereSuggestions,
+  createCohereSuggestions,
   deleteOutfit,
   getAllOutfits,
   createOutfit,
   insertBatchOutfits,
+  getSavedSuggestions,
+  generateCohereSuggestions,
 } = require("../controllers/outfit");
 
 const outfitRouter = express.Router();
 
-outfitRouter.get("/recommendation", getCohereSuggestions);
+outfitRouter.post("/suggestions", generateCohereSuggestions);
+outfitRouter.get("/suggestions", getSavedSuggestions);
+outfitRouter.post("/save");
 outfitRouter.delete("/:outfitId", deleteOutfit);
 outfitRouter.get("/", getAllOutfits);
 outfitRouter.post("/", createOutfit);
