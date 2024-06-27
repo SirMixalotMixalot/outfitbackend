@@ -28,7 +28,7 @@ const outfitToOutfitModel = (outfit) => {
         clothes.push(outfit[key])
     }
     
-    return clothes
+    return {clothes: clothes}
     
 }
 
