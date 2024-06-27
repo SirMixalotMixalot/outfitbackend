@@ -25,7 +25,9 @@ const outfitToOutfitModel = (outfit) => {
       };
     clothes = [];
     for (const key in outfitStructure) {
-        clothes.push(outfit[key])
+        if(outfit[key]) {
+          clothes.push(outfit[key])
+        }
     }
     
     return {clothes: clothes}
