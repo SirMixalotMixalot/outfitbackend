@@ -1,160 +1,10 @@
 const { Request, Response } = require("express");
-const {
-  postprompt,
-  closetItemToPrompFragment,
-  cohere,
-} = require("../helpers/prompt");
-const { getSeason } = require("../helpers/weather");
+const {generateOutfits} = require("../services/outfit_suggestion")
+const {OutfitsToOutfitsModel} = require("../mappers/outfit")
 const { Outfit, ClosetItem, User } = require("../models/models");
-const { WEATHER_URL } = require("../constants");
 
-const isValidJson = (jsonStr) => {
-  try {
-    JSON.parse(jsonStr);
-    return true;
-  } catch (e) {
-    return false;
-  }
-};
 
-/**
- *
- * @param {Request} req
- * @param {Response} res
- * @returns
- */
-const getCohereSuggestions = async (req, res) => {
-  /**
-   * @typedef {object} RequestBody
-   * @property {string} email
-   * @property {double} longitude
-   * @property {double} latitude
-   * @property {string} user_aesthetic
-   *
-   */
 
-  /** @type {RequestBody} */
-  let { email, latitude, longitude, user_aesthetic, avoid, reason, situation } =
-    req.body;
-  const { lat, long } = req.query;
-  latitude = lat;
-  longitude = long;
-  const userId = await User.findOne()
-    .where("email")
-    .equals(email)
-    .select("_id")
-    .exec();
-  const closetItems = await ClosetItem.find().where("owner_id").equals(userId);
-
-  const tops = ["Tops", "Outerwear"];
-  const bottoms = ["Bottoms", "Activewear"];
-  const footwear = ["Footwear"];
-  const topsEmpty = (counts) => tops.every((t) => counts[t] === 0);
-  const bottomsEmpty = (counts) => bottoms.every((b) => counts[b] === 0);
-  const feetEmpty = (counts) => footwear.every((f) => counts[f] === 0);
-  let itemCounts = {};
-  closetItems.forEach((item) => {
-    itemCounts[item.category] ??= 0;
-    itemCounts[item.category]++;
-  });
-
-  if (
-    topsEmpty(itemCounts) ||
-    bottomsEmpty(itemCounts) ||
-    feetEmpty(itemCounts)
-  ) {
-    return res.status(400).json({ message: "Not enough clothing items" });
-  }
-
-  const current_weather = await fetch(
-    `${WEATHER_URL}/current.json?key=${process.env.WEATHER_API_KEY}&q=${latitude},${longitude}`
-  ).then((weather) => weather.json());
-
-  const conditions = current_weather.current;
-  const feels_like = conditions.feelslike_c;
-  const weather_summary = conditions.condition.text;
-  const prompt = `You are fashion advisor. I am a person with a ${
-    user_aesthetic || "normal"
-  } aesthetic. I have ${closetItems
-    .map(closetItemToPrompFragment)
-    .join(
-      " and "
-    )}. It is ${weather_summary} and feels ${feels_like}°C. The season is ${getSeason(
-    { hemisphere: latitude < 0 ? "southern" : "northern" }
-  )}. ${situation ? "The occasion is " + situation : ""}`;
-
-  let chatHistory = [{ role: "USER", message: prompt }];
-  let chatResponse = await cohere.chat({
-    chatHistory: chatHistory,
-    message: postprompt,
-
-    // perform web search before answering the question. You can also use your own custom connector.
-    connectors: [{ id: "web-search" }],
-  });
-  chatHistory.push({ role: "USER", message: postprompt });
-  chatHistory.push({ role: "CHATBOT", message: chatResponse.text });
-  let suggestions = chatResponse.text.replace("\\", "");
-
-  let jsonStart = suggestions.indexOf("json");
-  let jsonEnd = suggestions.lastIndexOf("```");
-  let jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
-  let tries = 10;
-
-  while (!isValidJson(jsonResponse) && tries > 0) {
-    console.log("recommending...");
-    chatResponse = await cohere
-      .chat({
-        chatHistory: chatHistory,
-        message:
-          "The json of the outfit recommendation result in your response is not formatted correctly. Please fix it and send only the corrected json. Do not include any other text",
-      })
-      .catch((e) => {
-        console.error(e);
-        return res.status(500).json({ message: "Service Error" });
-      });
-    suggestions = chatResponse.text.replace("\\", "");
-    console.log(suggestions);
-    jsonStart = suggestions.indexOf("json");
-    jsonEnd = suggestions.lastIndexOf("```");
-    jsonResponse = suggestions.slice(jsonStart + "json".length, jsonEnd);
-    tries--;
-  }
-  try {
-    const outfitsJson = JSON.parse(jsonResponse);
-    const outfitsMaybe = outfitsJson.map(({ clothing_items }, index) => {
-      items = [];
-
-      try {
-        if (Array.isArray(clothing_items)) {
-          items = clothing_items
-            .map((itemId) => closetItems.find((item) => item._id == itemId))
-            .filter((item) => item !== undefined);
-        } else {
-          items = clothing_items
-            .split(",")
-            .map((itemId) =>
-              closetItems.find((item) => item._id == itemId.trim())
-            )
-            .filter((item) => item !== undefined);
-        }
-      } catch (e) {
-        // Handle errors here if needed
-        console.error(e);
-        res.status(500).json({ message: "Service error" });
-      }
-      const clothes = [...new Set(items)];
-      if (clothes.length < 3 || clothes.length > 4) {
-        return null; //So we filter it
-      }
-      return { clothes, id: index };
-    });
-    const outfits = outfitsMaybe.filter((clothing) => clothing !== null);
-    return res.status(200).json({ outfits });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).send({ message: "Service Error" });
-  }
-};
 
 const deleteOutfit = async (req, res) => {
   const { outfitId } = req.params;
@@ -220,9 +70,28 @@ const createOutfit = async (req, res) => {
     return res.status(400).send({ message: "Outfit name already exists" });
   }
 };
+
+const GetSuggestions = async (req, res) => {
+  let {email} = req.body
+  const userId = await User.findOne()
+  .where("email")
+  .equals(email)
+  .select("_id")
+  .exec();
+const closetItems = await ClosetItem.find().where("owner_id").equals(userId);
+
+const outfits = generateOutfits(closetItems)
+/**
+ * 
+ */
+outfitModels = OutfitsToOutfitsModel(outfits)
+
+  return res.status(200).json({outfits: outfitModels})
+
+}
 module.exports = {
+  GetSuggestions,
   deleteOutfit,
-  getCohereSuggestions,
   getAllOutfits,
   insertBatchOutfits,
   createOutfit,

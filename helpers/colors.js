@@ -213,4 +213,5 @@ module.exports = {
   getTriadicColors,
   closestColor,
   colorToHex,
+  COLORS
 };

@@ -19,7 +19,7 @@ app.use(
     allowedHeaders: ["Content-Type", "x-access-token"],
   })
 );
-//Parse the body as json everytime we receive a request
+//Parse the body as json every time we receive a request
 app.use(bodyParser.json());
 
 app.use(authenticateConnection);
