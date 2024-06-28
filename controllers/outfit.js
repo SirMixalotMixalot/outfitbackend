@@ -81,10 +81,10 @@ const GetSuggestions = async (req, res) => {
 const closetItems = await ClosetItem.find().where("owner_id").equals(userId);
 
 const outfits = generateOutfits(closetItems)
-/**
- * 
- */
-outfitModels = OutfitsToOutfitsModel(outfits)
+
+const outfitSet = [...(new Set(outfits))]
+
+outfitModels = OutfitsToOutfitsModel(outfitSet)
 
   return res.status(200).json({outfits: outfitModels})
 

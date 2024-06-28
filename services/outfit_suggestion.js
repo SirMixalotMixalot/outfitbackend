@@ -92,9 +92,32 @@ const generateOutfits = (closetItems) => {
       }
     }
 
-    // Fill any null fields with the first unused item of that category
-    for (const category in outfit) {
-      if (outfit[category] === null) {
+    // Ensure essential fields are filled
+    const essentialCategories = ['Tops', 'Dresses', 'Bottoms', 'Footwear'];
+    essentialCategories.forEach(category => {
+      if (category === 'Tops' || category === 'Dresses') {
+        if (outfit['Tops'] === null && outfit['Dresses'] === null) {
+          const remainingItems = closetItems.filter(item => 
+            (item.category === 'Tops' || item.category === 'Dresses') && !usedItems.has(item)
+          );
+          if (remainingItems.length > 0) {
+            const selectedItem = remainingItems[0];
+            outfit[selectedItem.category] = selectedItem;
+            usedItems.add(selectedItem);
+          }
+        }
+      } else if (category === 'Bottoms') {
+        if (outfit['Dresses'] !== null) {
+          outfit['Bottoms'] = null; // Ensure no bottoms if a dress is selected
+        } else if (outfit['Bottoms'] === null) {
+          const remainingItems = closetItems.filter(item => item.category === category && !usedItems.has(item));
+          if (remainingItems.length > 0) {
+            const selectedItem = remainingItems[0];
+            outfit[category] = selectedItem;
+            usedItems.add(selectedItem);
+          }
+        }
+      } else if (outfit[category] === null) {
         const remainingItems = closetItems.filter(item => item.category === category && !usedItems.has(item));
         if (remainingItems.length > 0) {
           const selectedItem = remainingItems[0];
@@ -102,11 +125,10 @@ const generateOutfits = (closetItems) => {
           usedItems.add(selectedItem);
         }
       }
-    }
+    });
 
     return outfit;
   };
-
   // Generate outfits
   const triadicOutfit = generateOutfit(triadicColors);
   const analogousOutfit = generateOutfit(analogousColors);
