@@ -93,39 +93,38 @@ const generateOutfits = (closetItems) => {
     }
 
     // Ensure essential fields are filled
-    const essentialCategories = ['Tops', 'Dresses', 'Bottoms', 'Footwear'];
-    essentialCategories.forEach(category => {
-      if (category === 'Tops' || category === 'Dresses') {
-        if (outfit['Tops'] === null && outfit['Dresses'] === null) {
-          const remainingItems = closetItems.filter(item => 
-            (item.category === 'Tops' || item.category === 'Dresses') && !usedItems.has(item)
-          );
-          if (remainingItems.length > 0) {
-            const selectedItem = remainingItems[0];
-            outfit[selectedItem.category] = selectedItem;
-            usedItems.add(selectedItem);
-          }
-        }
-      } else if (category === 'Bottoms') {
-        if (outfit['Dresses'] !== null) {
-          outfit['Bottoms'] = null; // Ensure no bottoms if a dress is selected
-        } else if (outfit['Bottoms'] === null) {
-          const remainingItems = closetItems.filter(item => item.category === category && !usedItems.has(item));
-          if (remainingItems.length > 0) {
-            const selectedItem = remainingItems[0];
-            outfit[category] = selectedItem;
-            usedItems.add(selectedItem);
-          }
-        }
-      } else if (outfit[category] === null) {
-        const remainingItems = closetItems.filter(item => item.category === category && !usedItems.has(item));
-        if (remainingItems.length > 0) {
-          const selectedItem = remainingItems[0];
-          outfit[category] = selectedItem;
-          usedItems.add(selectedItem);
-        }
+    if (outfit['Tops'] === null && outfit['Dresses'] === null) {
+      const remainingItems = closetItems.filter(item =>
+        (item.category === 'Tops' || item.category === 'Dresses') && !usedItems.has(item)
+      );
+      if (remainingItems.length > 0) {
+        const selectedItem = remainingItems[Math.floor(Math.random() * remainingItems.length)];
+        outfit[selectedItem.category] = selectedItem;
+        usedItems.add(selectedItem);
       }
-    });
+    }
+
+    // Skip filling Bottoms if a Dress is selected
+    if (outfit['Dresses'] === null && outfit['Bottoms'] === null) {
+      const remainingItems = closetItems.filter(item => item.category === 'Bottoms' && !usedItems.has(item));
+      if (remainingItems.length > 0) {
+        const selectedItem = remainingItems[Math.floor(Math.random() * remainingItems.length)];
+        outfit['Bottoms'] = selectedItem;
+        usedItems.add(selectedItem);
+      }
+    } else if (outfit['Dresses'] !== null) {
+      outfit['Tops'] = null;
+      outfit['Bottoms'] = null;
+    }
+
+    if (outfit['Footwear'] === null) {
+      const remainingItems = closetItems.filter(item => item.category === 'Footwear' && !usedItems.has(item));
+      if (remainingItems.length > 0) {
+        const selectedItem = remainingItems[Math.floor(Math.random() * remainingItems.length)];
+        outfit['Footwear'] = selectedItem;
+        usedItems.add(selectedItem);
+      }
+    }
 
     return outfit;
   };
